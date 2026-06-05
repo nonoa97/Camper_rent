@@ -96,4 +96,23 @@ Az alkalmazás elérhető: [http://localhost:3000](http://localhost:3000)
 
 ## Státusz
 
-Aktív fejlesztés alatt. Elkészült oldalak és alap Supabase integráció megvan — Stripe, Auth, AI chatbot és admin panel fejlesztés alatt.
+Aktív fejlesztés alatt.
+
+### Kész
+- Next.js 16 projekt (TypeScript, Tailwind v4, App Router)
+- Supabase integráció — 9 lakóautó seedelve, képek Storage-ban
+- Összes alap oldal (főoldal, katalógus, detail, fedezd-fel, extrak, utazasok, rolunk, gyik, kapcsolat)
+- Elérhetőségi naptár (demo adatokkal)
+- Prémium UI — PageHeader, CtaBanner, CamperCarousel, TripCarousel, Testimonials, Features
+
+### Fejlesztés alatt
+- `/extrak` oldal — design és tartalom felújítás szükséges
+- `/utazasok` + `/utazasok/[slug]` — Supabase-ből töltve, részletes trip oldalakkal
+- **Stripe checkout** — fizetős trip csomagok, Apple Pay / Google Pay
+- **Freemium logika** — 1 ingyenes útvonal, többi fizetős (lock + CTA)
+- **Supabase Auth** — email/jelszó + Google OAuth, JWT session kezelés
+- **Purchases tábla** — Stripe webhook alapján, userhez kötött vásárlások
+- **"Saját útjaim" oldal** — bejelentkezett user látja a megvásárolt tripjeit
+- **AI chatbot widget** — kamper/útvonal ajánló asszisztens (Claude API)
+- **Admin panel** (`/admin`) — autók, utak és elérhetőség kezelése ügyfél által
+- **Vercel deploy**
