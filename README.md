@@ -2,7 +2,7 @@
 
 Prémium lakóautó bérlési platform — Next.js, Supabase, Stripe és AI alapokon.
 
-Bemutató projekt, amely egy valós ügyfélnek szállítható, teljes körű weboldalt modellez: szűrhető katalógus, kurált útvonalak megvásárolható digitális tervekkel, AI ajánló chatbot, Stripe fizetés és admin felület.
+Bemutató projekt, amely egy vteljes körű weboldalt modellez: szűrhető katalógus, kurált útvonalak megvásárolható digitális tervekkel, AI ajánló chatbot, Stripe fizetés és admin felület.
 
 ---
 
