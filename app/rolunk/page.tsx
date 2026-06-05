@@ -27,7 +27,7 @@ export default function RolunkPage() {
       <PageHeader />
 
       {/* Intro */}
-      <section className="max-w-[1300px] mx-auto px-10 py-16 grid grid-cols-2 gap-16 items-start">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-start">
         <div>
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">A mi történetünk</span>
           <h1 className="text-4xl font-extrabold text-[#111] leading-tight">
@@ -44,7 +44,7 @@ export default function RolunkPage() {
       <div className="border-t border-[#eeeeec] max-w-[1300px] mx-auto" />
 
       {/* Origin story */}
-      <section className="max-w-[1300px] mx-auto px-10 py-16 grid grid-cols-2 gap-14 items-center">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center">
         <div className="relative h-72 rounded-2xl overflow-hidden">
           <Image
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80"
@@ -68,7 +68,7 @@ export default function RolunkPage() {
       <div className="border-t border-[#eeeeec] max-w-[1300px] mx-auto" />
 
       {/* Fleet */}
-      <section className="max-w-[1300px] mx-auto px-10 py-16 grid grid-cols-2 gap-14 items-center">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center">
         <div>
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">A flottánk</span>
           <h2 className="text-2xl font-extrabold text-[#111] mb-4">Minden autó egy ígéret</h2>
@@ -92,7 +92,7 @@ export default function RolunkPage() {
       <div className="border-t border-[#eeeeec] max-w-[1300px] mx-auto" />
 
       {/* Team */}
-      <section className="max-w-[1300px] mx-auto px-10 py-16 grid grid-cols-2 gap-14 items-center">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center">
         <div className="relative h-72 rounded-2xl overflow-hidden">
           <Image
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80"
@@ -116,13 +116,13 @@ export default function RolunkPage() {
       <StatsBanner />
 
       {/* Values */}
-      <section className="bg-[#f7f7f5] py-16 px-10">
+      <section className="bg-[#f7f7f5] py-10 md:py-16 px-4 md:px-10">
         <div className="max-w-[1300px] mx-auto">
           <div className="text-center mb-10">
             <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Miért minket válassz</span>
             <h2 className="text-3xl font-extrabold text-[#111]">Amit képviselünk</h2>
           </div>
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {VALUES.map(v => (
               <div key={v.title} className="bg-white border border-[#ece9e4] rounded-2xl p-6 shadow-sm">
                 <div className="relative w-11 h-11 rounded-xl overflow-hidden mb-4">

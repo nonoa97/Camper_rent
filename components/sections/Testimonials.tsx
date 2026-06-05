@@ -60,18 +60,18 @@ export default function Testimonials() {
   }))
 
   return (
-    <section className="pt-12 pb-10 px-10" style={{ background: 'linear-gradient(to bottom, #ffffff, #f7f5f2)' }}>
+    <section className="pt-12 pb-10 px-4 md:px-10" style={{ background: 'linear-gradient(to bottom, #ffffff, #f7f5f2)' }}>
       <div className="max-w-[1200px] mx-auto">
         <div className="text-center mb-10">
           <span className="block text-xs tracking-[0.2em] uppercase text-[#999] mb-3">Vendégeink mondták</span>
           <h2 className="text-3xl font-extrabold text-[#111]">Mit gondolnak rólunk?</h2>
         </div>
 
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {visible.map(({ review, colorIndex }, i) => (
             <div
               key={i}
-              className="bg-white border border-[#ece9e4] rounded-2xl p-5 transition-all duration-500 h-48 flex flex-col shadow-sm"
+              className={`bg-white border border-[#ece9e4] rounded-2xl p-5 transition-all duration-500 flex flex-col shadow-sm ${i > 0 ? 'hidden md:flex' : ''}`}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div

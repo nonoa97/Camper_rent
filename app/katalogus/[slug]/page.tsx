@@ -224,8 +224,8 @@ export default function CamperDetailPage() {
       <PageHeader />
 
       {/* ── HERO ──────────────────────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-10 pt-12 pb-10">
-        <div className="grid grid-cols-[1fr_300px] gap-10 items-start">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10 pt-12 pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8 md:gap-10 items-start">
 
           <div>
             <div className="relative h-[480px] rounded-2xl overflow-hidden mb-3 group">
@@ -358,8 +358,8 @@ export default function CamperDetailPage() {
       {/* ── SPEC STRIP ────────────────────────────────────────────── */}
       {specStrip.length > 0 && (
         <div className="border-y border-[#ece9e4] py-6 mb-10">
-          <div className="max-w-[1300px] mx-auto px-10">
-            <div className="flex items-stretch">
+          <div className="max-w-[1300px] mx-auto px-4 md:px-10">
+            <div className="flex items-stretch overflow-x-auto">
               {specStrip.map(item => (
                 <div key={item.label} className="flex-1 flex flex-col items-center gap-1 py-1 border-r border-[#ece9e4] last:border-r-0">
                   <span className="text-[22px] leading-none mb-0.5">{item.icon}</span>
@@ -374,17 +374,17 @@ export default function CamperDetailPage() {
 
 
       {/* ── NAPTÁR ────────────────────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-10 mb-16 pt-10">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-16 pt-10">
         <AvailabilityCalendar />
       </div>
 
       {/* ── MŰSZAKI ADATOK ────────────────────────────────────────── */}
       {techSpecs.length > 0 && (
-        <div className="max-w-[1300px] mx-auto px-10 mb-16 border-t border-[#ece9e4] pt-10">
+        <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-16 border-t border-[#ece9e4] pt-10">
           <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-7">
             Műszaki adatok
           </span>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-6">
             {techSpecs.map(spec => (
               <div key={spec.label}>
                 <p className="text-[11px] text-[#888] uppercase tracking-wider mb-1.5">{spec.label}</p>
@@ -395,11 +395,11 @@ export default function CamperDetailPage() {
         </div>
       )}
 
-      <div className="max-w-[1300px] mx-auto px-10">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10">
 
         {/* ── STORY — kép + szöveg ──────────────────────────────── */}
         {allImages.length > 1 && (camper.overview_title || overviewLines.length > 0) && (
-          <div className="grid grid-cols-2 gap-16 items-center mb-24">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-24">
             <button
               onClick={() => setLightboxIndex(storyIdx1)}
               className="block relative h-[500px] rounded-2xl overflow-hidden cursor-zoom-in group"
@@ -430,7 +430,7 @@ export default function CamperDetailPage() {
           <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-8">
             Felszereltség
           </span>
-          <div className="grid grid-cols-3 gap-x-12 gap-y-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-12 gap-y-10">
             {equipmentSections.map(sec => (
               <div key={sec.title}>
                 <p className="text-[11px] tracking-[0.18em] uppercase text-[#777] font-semibold mb-3">
@@ -453,8 +453,8 @@ export default function CamperDetailPage() {
       </div>
 
       {/* ── EXTRÁK ───────────────────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-10 py-14 border-t border-[#ece9e4]">
-        <div className="grid grid-cols-2 gap-16 items-center">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10 py-14 border-t border-[#ece9e4]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
           <div>
             <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Személyre szabva</span>
             <h2 className="text-2xl font-extrabold text-[#111] mb-4 leading-tight">
@@ -487,12 +487,12 @@ export default function CamperDetailPage() {
       </div>
 
       {/* ── AJÁNLOTT ÚTVONALAK ───────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-10 py-14 border-t border-[#ece9e4]">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10 py-14 border-t border-[#ece9e4]">
         <div className="text-center mb-10">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Nem tudod, merre indulj?</span>
           <h2 className="text-2xl font-extrabold text-[#111]">Fedezd fel Európa legszebb útvonalait ezzel a lakóautóval.</h2>
         </div>
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           {ALL_TRIPS.map(trip => (
             <Link key={trip.id} href="/utazasok"
               className="group relative block h-[260px]"

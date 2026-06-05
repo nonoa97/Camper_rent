@@ -14,7 +14,7 @@ export default function FedezdFelPage() {
     <>
       <PageHeader />
 
-      <section className="max-w-[1300px] mx-auto px-10 pt-14 pb-16">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-16">
 
         <div className="text-center mb-10">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-4">Kezdd el a kalandot</span>
@@ -26,7 +26,7 @@ export default function FedezdFelPage() {
           </p>
         </div>
 
-        <div className="flex justify-center gap-12 mb-12">
+        <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12">
           {STATS.map(s => (
             <div key={s.label} className="text-center">
               <div className="text-2xl font-extrabold text-[#111]">{s.value}</div>
@@ -35,8 +35,8 @@ export default function FedezdFelPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <Link href="/utazasok" className="group relative rounded-2xl overflow-hidden block h-[440px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link href="/utazasok" className="group relative rounded-2xl overflow-hidden block h-[300px] md:h-[440px]">
             <Image
               src="/trips_selector.png"
               alt="Szervezett útvonalak"
@@ -50,7 +50,7 @@ export default function FedezdFelPage() {
             </div>
           </Link>
 
-          <Link href="/katalogus" className="group relative rounded-2xl overflow-hidden block h-[440px]">
+          <Link href="/katalogus" className="group relative rounded-2xl overflow-hidden block h-[300px] md:h-[440px]">
             <Image
               src="/van_selector.png"
               alt="Lakóautó kollekció"

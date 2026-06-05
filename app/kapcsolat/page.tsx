@@ -16,7 +16,7 @@ export default function KapcsolatPage() {
       <PageHeader />
 
       {/* Compact header */}
-      <section className="max-w-[1300px] mx-auto px-10 pt-9 pb-8 border-b border-[#eeeeec]">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-9 pb-8 border-b border-[#eeeeec]">
         <div className="max-w-[560px]">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2.5">Lépj kapcsolatba velünk</span>
           <h1 className="text-4xl font-extrabold text-[#111] mb-2.5 leading-tight">Kapcsolat</h1>
@@ -27,8 +27,8 @@ export default function KapcsolatPage() {
       </section>
 
       {/* Two-column main */}
-      <section className="max-w-[1300px] mx-auto px-10 py-10 pb-20">
-        <div className="grid grid-cols-2 gap-16 items-start">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-start">
 
           {/* Left: Form */}
           <div>
@@ -40,7 +40,7 @@ export default function KapcsolatPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] tracking-[0.15em] uppercase text-[#888] mb-1.5">Név</label>
                     <input required type="text" placeholder="Kovács Anna"
@@ -52,7 +52,7 @@ export default function KapcsolatPage() {
                       className="w-full px-4 py-3 text-sm border border-[#e0e0dc] rounded-xl bg-[#fafaf8] text-[#111] placeholder-[#ccc] focus:outline-none focus:border-[#1a3a2a] transition-colors" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] tracking-[0.15em] uppercase text-[#888] mb-1.5">Telefonszám</label>
                     <input type="tel" placeholder="+36 30 ..."

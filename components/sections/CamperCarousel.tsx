@@ -47,7 +47,7 @@ export default function CamperCarousel() {
   const visible = [0, 1, 2].map(offset => campers[(index + offset) % n])
 
   return (
-    <section className="py-14 px-10 bg-[#f5f5f5]">
+    <section className="py-14 px-4 md:px-10 bg-[#f5f5f5]">
       <div className="max-w-[1200px] mx-auto">
         <div className="text-center mb-9">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2.5">Lakóautóink</span>
@@ -57,9 +57,9 @@ export default function CamperCarousel() {
         <div className="relative flex items-center gap-3">
           <button onClick={prev} className="flex-shrink-0 w-8 h-8 rounded-full border border-[#ccc] bg-white flex items-center justify-center hover:border-[#111] hover:shadow-sm transition-all text-[#333] text-base">‹</button>
 
-          <div className="grid grid-cols-3 gap-4 flex-1">
-            {visible.map((camper) => (
-              <Link key={camper.id} href={`/katalogus/${camper.slug}`} className="group cursor-pointer block">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+            {visible.map((camper, i) => (
+              <Link key={camper.id} href={`/katalogus/${camper.slug}`} className={`group cursor-pointer block ${i > 0 ? 'hidden md:block' : ''}`}>
                 <div className="relative h-56 rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">
                   {camper.image_url ? (
                     <Image src={camper.image_url} alt={camper.name} fill className="object-cover transition-transform duration-400 group-hover:scale-105" />

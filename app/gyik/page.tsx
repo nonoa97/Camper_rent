@@ -66,7 +66,7 @@ export default function GyikPage() {
     <>
       <PageHeader />
 
-      <section className="max-w-[1300px] mx-auto px-10 pt-14 pb-4">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-4">
         <div className="max-w-[680px]">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Segítség & információ</span>
           <h1 className="text-4xl font-extrabold text-[#111] mb-3 leading-tight">Gyakori kérdések</h1>
@@ -76,7 +76,7 @@ export default function GyikPage() {
         </div>
       </section>
 
-      <section className="max-w-[1300px] mx-auto px-10 py-8 pb-14">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-8 pb-14">
         <div className="flex flex-col gap-2">
           {FAQS.map((f) => (
             <FaqItem key={f.q} icon={f.icon} q={f.q} a={f.a} />

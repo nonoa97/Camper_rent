@@ -139,7 +139,7 @@ export default function AvailabilityCalendar() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         <MonthGrid year={m1.getFullYear()} month={m1.getMonth()} bookings={DEMO_BOOKINGS} />
         <MonthGrid year={m2.getFullYear()} month={m2.getMonth()} bookings={DEMO_BOOKINGS} />
       </div>

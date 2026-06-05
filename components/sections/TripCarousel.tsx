@@ -21,7 +21,7 @@ export default function TripCarousel() {
   const visible = [0, 1, 2].map(offset => TRIPS[(index + offset) % n])
 
   return (
-    <section className="py-14 px-10 bg-white">
+    <section className="py-14 px-4 md:px-10 bg-white">
       <div className="max-w-[1200px] mx-auto">
         <div className="text-center mb-9">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2.5">Válaszd ki a kalandod</span>
@@ -36,9 +36,9 @@ export default function TripCarousel() {
             ‹
           </button>
 
-          <div className="grid grid-cols-3 gap-4 flex-1">
-            {visible.map((trip) => (
-              <div key={trip.id} className="group cursor-pointer">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+            {visible.map((trip, i) => (
+              <div key={trip.id} className={`group cursor-pointer ${i > 0 ? 'hidden md:block' : ''}`}>
                 <div className="relative h-56 rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">
                   <Image
                     src={trip.image}

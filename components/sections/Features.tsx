@@ -18,7 +18,7 @@ const FEATURES = [
 
 export default function Features() {
   return (
-    <section className="py-10 px-10 bg-white border-t border-[#f0f0f0]">
+    <section className="py-10 px-4 md:px-10 bg-white border-t border-[#f0f0f0]">
       <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         {FEATURES.map((f) => (
           <div key={f.title} className="flex items-start gap-4">

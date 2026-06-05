@@ -125,7 +125,7 @@ export default function KatalogusPage() {
     <>
       <PageHeader />
 
-      <section className="max-w-[1300px] mx-auto px-10 pt-14 pb-6 text-center">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-6 text-center">
         <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Válassz egy lakóautót</span>
         <h1 className="text-4xl font-extrabold text-[#111] mb-3">Találd meg az utadhoz illő járművet</h1>
         <p className="text-[#666] text-base max-w-lg mx-auto">
@@ -133,10 +133,10 @@ export default function KatalogusPage() {
         </p>
       </section>
 
-      <section className="max-w-[1300px] mx-auto px-10 py-10 flex gap-12 items-start">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 flex flex-col md:flex-row gap-8 md:gap-12 items-start">
 
         {/* Sidebar */}
-        <aside className="w-52 flex-shrink-0">
+        <aside className="w-full md:w-52 md:flex-shrink-0">
           <FilterSection label="Férőhely">
             <FilterBtn active={capacityId === null} onClick={() => setCapacityId(null)}>Mind</FilterBtn>
             {capacities.map(c => (
@@ -172,7 +172,7 @@ export default function KatalogusPage() {
               <p className="text-lg">Nincs találat a szűrési feltételekre.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {filtered.map(camper => (
                 <Link key={camper.id} href={`/katalogus/${camper.slug}`}
                   className="group bg-white border border-[#ece9e4] rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-200 block">

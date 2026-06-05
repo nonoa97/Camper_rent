@@ -58,7 +58,7 @@ export default function StatsBanner() {
 
   return (
     <section ref={ref} className="bg-[#1a3a2a] py-12">
-      <div className="max-w-[1300px] mx-auto px-10 grid grid-cols-4 gap-6 text-center">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
         {STATS.map(s => (
           <StatItem key={s.label} {...s} triggered={triggered} />
         ))}

@@ -90,7 +90,7 @@ export default function ExtrakPage() {
     <>
       <PageHeader />
 
-      <section className="max-w-[1300px] mx-auto px-10 pt-14 pb-6 text-center">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-6 text-center">
         <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Személyre szabva</span>
         <h1 className="text-4xl font-extrabold text-[#111] mb-4">Pakold fel az autót, ahogy neked kell</h1>
         <p className="text-[#666] text-base max-w-lg mx-auto">
@@ -98,14 +98,14 @@ export default function ExtrakPage() {
         </p>
       </section>
 
-      <section className="max-w-[1300px] mx-auto px-10 py-12">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-12">
         <div className="space-y-14">
           {EXTRAS.map(group => (
             <div key={group.category}>
               <p className="text-[10px] tracking-[0.22em] uppercase text-[#888] mb-6 border-b border-[#ece9e4] pb-3">
                 {group.category}
               </p>
-              <div className="grid grid-cols-3 gap-x-10 gap-y-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-8">
                 {group.items.map(item => (
                   <div key={item.name} className="flex gap-4">
                     <span className="text-2xl flex-shrink-0 mt-0.5">{item.icon}</span>
@@ -121,8 +121,8 @@ export default function ExtrakPage() {
         </div>
       </section>
 
-      <section className="max-w-[1300px] mx-auto px-10 py-10 mb-4">
-        <div className="bg-[#f5f3ef] rounded-2xl px-10 py-8 flex items-center justify-between gap-10">
+      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 mb-4">
+        <div className="bg-[#f5f3ef] rounded-2xl px-6 md:px-10 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-10">
           <div>
             <p className="text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2">Hogyan működik?</p>
             <h2 className="text-xl font-extrabold text-[#111] mb-2">Jelezd előre, mi előkészítjük</h2>

@@ -54,13 +54,13 @@ export default function Footer() {
   return (
     <footer style={{ background: 'linear-gradient(to bottom, #f4f4f2, #efefed)' }}>
 
-      <div className="border-t border-[#d5d3d0] py-6 text-center px-10">
+      <div className="border-t border-[#d5d3d0] py-6 text-center px-4 md:px-10">
         <p className="text-base font-semibold text-[#111] tracking-wide italic">
           Fedezd fel Európát a saját tempódban.
         </p>
       </div>
 
-      <div className="max-w-[1080px] mx-auto px-10 pt-7 pb-7 grid grid-cols-3 gap-6 items-start">
+      <div className="max-w-[1080px] mx-auto px-4 md:px-10 pt-7 pb-7 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 items-start">
 
         <div>
           <div className="text-lg font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
@@ -109,7 +109,7 @@ export default function Footer() {
 
       </div>
 
-      <div className="max-w-[1080px] mx-auto px-10 pb-4 text-center text-[11px] text-[#888] tracking-wide border-t border-[#e0e0de] pt-3">
+      <div className="max-w-[1080px] mx-auto px-4 md:px-10 pb-4 text-center text-[11px] text-[#888] tracking-wide border-t border-[#e0e0de] pt-3">
         © {new Date().getFullYear()} VanLife Europe. Minden jog fenntartva.
       </div>
 
