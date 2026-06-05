@@ -21,7 +21,7 @@ export default function TripCarousel() {
   const visible = [0, 1, 2].map(offset => TRIPS[(index + offset) % n])
 
   return (
-    <section className="py-14 px-4 md:px-10 bg-white">
+    <section className="py-8 md:py-14 px-4 md:px-10 bg-white">
       <div className="max-w-[1200px] mx-auto">
         <div className="text-center mb-9">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2.5">Válaszd ki a kalandod</span>

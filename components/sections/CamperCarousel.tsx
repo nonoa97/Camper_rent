@@ -47,7 +47,7 @@ export default function CamperCarousel() {
   const visible = [0, 1, 2].map(offset => campers[(index + offset) % n])
 
   return (
-    <section className="py-14 px-4 md:px-10 bg-[#f5f5f5]">
+    <section className="py-8 md:py-14 px-4 md:px-10 bg-[#f5f5f5]">
       <div className="max-w-[1200px] mx-auto">
         <div className="text-center mb-9">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2.5">Lakóautóink</span>

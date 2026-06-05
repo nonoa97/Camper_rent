@@ -13,9 +13,7 @@ export default function Hero() {
         className="object-cover object-center"
       />
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.28) 35%, rgba(0,0,0,0.0) 100%)' }} />
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,.15))' }} />
-
-      <div className="relative z-10 w-full px-12">
+      <div className="relative z-10 w-full px-6 md:px-12">
         <h1
           className="font-extrabold leading-[1.05] mb-4 max-w-xl"
           style={{ fontSize: 'clamp(2.4rem, 4.6vw, 4.6rem)' }}
