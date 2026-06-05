@@ -1,12 +1,44 @@
+export interface Capacity {
+  id: number
+  label: string
+  sort_order: number
+}
+
+export interface CamperType {
+  id: number
+  name: string
+  sort_order: number
+}
+
+export interface ComfortLevel {
+  id: number
+  name: string
+  sort_order: number
+}
+
+export interface Feature {
+  id: number
+  name: string
+  icon?: string
+}
+
 export interface Camper {
   id: string
   name: string
-  people: '2-3' | '2-4' | '4-6' | '6+'
-  type: 'camper-van' | 'alkóvos' | 'integrált'
-  comfort: 'alap' | 'comfort' | 'prémium'
+  slug?: string
+  capacity_id?: number
+  type_id?: number
+  comfort_id?: number
+  // joined relations (when queried with select)
+  capacity?: Capacity
+  camper_type?: CamperType
+  comfort_level?: ComfortLevel
+  features?: Feature[]
   description?: string
-  price?: string
+  price_per_day?: number
   image_url?: string
+  images?: string[]
+  available?: boolean
   detail_url?: string
   inquiry_url?: string
   created_at?: string
