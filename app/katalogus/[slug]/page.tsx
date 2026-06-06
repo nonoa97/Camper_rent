@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSwipe } from '@/hooks/useSwipe'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import PageHeader from '@/components/layout/PageHeader'
 import AvailabilityCalendar from '@/components/sections/AvailabilityCalendar'
+import TripStack from '@/components/sections/TripStack'
 import { supabase } from '@/lib/supabase'
 
 interface TripCard {
@@ -14,6 +16,14 @@ interface TripCard {
   days: number
   image: string
 }
+
+const DISPLAY_TRIPS = [
+  { id: '1', name: 'Dolomitok körút',   days: 5,  image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80' },
+  { id: '2', name: 'Garda-tó környéke', days: 7,  image: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&q=80' },
+  { id: '3', name: 'Szlovén Alpok',     days: 4,  image: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80' },
+  { id: '5', name: 'Horvát tengerpart', days: 8,  image: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800&q=80' },
+  { id: '6', name: 'Norvég fjordok',    days: 14, image: 'https://images.unsplash.com/photo-1601439678777-b2b3c56fa627?w=800&q=80' },
+]
 
 const ALL_TRIPS: TripCard[] = [
   { id: '1', name: 'Dolomitok körút',        days: 5,  image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80' },
@@ -64,6 +74,11 @@ export default function CamperDetailPage() {
   const [loading, setLoading] = useState(true)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [heroIndex, setHeroIndex] = useState(0)
+  const imageCount = camper ? [camper.image_url, ...(camper.images ?? [])].filter(Boolean).length : 0
+  const heroSwipe = useSwipe(
+    () => setHeroIndex(i => (i + 1) % imageCount),
+    () => setHeroIndex(i => (i - 1 + imageCount) % imageCount),
+  )
 
   useEffect(() => {
     async function load() {
@@ -228,7 +243,7 @@ export default function CamperDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8 md:gap-10 items-start">
 
           <div>
-            <div className="relative h-[480px] rounded-2xl overflow-hidden mb-3 group">
+            <div className="relative h-[260px] md:h-[480px] rounded-2xl overflow-hidden mb-3 group" {...heroSwipe}>
               <button
                 onClick={() => setLightboxIndex(heroIndex)}
                 className="block w-full h-full cursor-zoom-in"
@@ -286,7 +301,7 @@ export default function CamperDetailPage() {
                     <button
                       key={i}
                       onClick={() => showOverlay ? setLightboxIndex(imgIndex) : setHeroIndex(imgIndex)}
-                      className={`block relative h-28 rounded-xl overflow-hidden group transition-all ${isActive ? 'ring-2 ring-[#1a3a2a]' : 'opacity-70 hover:opacity-100'}`}
+                      className={`block relative h-16 md:h-28 rounded-xl overflow-hidden group transition-all ${isActive ? 'ring-2 ring-[#1a3a2a]' : 'opacity-70 hover:opacity-100'}`}
                     >
                       <Image
                         src={img}
@@ -306,11 +321,11 @@ export default function CamperDetailPage() {
               </div>
             )}
 
-            <h1 className="text-[2.6rem] font-extrabold text-[#111] mb-3 leading-tight tracking-tight">
+            <h1 className="text-[2.6rem] font-extrabold text-[#111] mb-3 leading-tight tracking-tight text-center md:text-left">
               {camper.name}
             </h1>
             {camper.description && (
-              <p className="text-[#444] text-base leading-relaxed mb-5">
+              <p className="text-[#444] text-base leading-relaxed mb-5 text-center md:text-left">
                 {camper.description}
               </p>
             )}
@@ -357,14 +372,14 @@ export default function CamperDetailPage() {
 
       {/* ── SPEC STRIP ────────────────────────────────────────────── */}
       {specStrip.length > 0 && (
-        <div className="border-y border-[#ece9e4] py-6 mb-10">
+        <div className="border-y border-[#ece9e4] py-4 mb-6 md:mb-10">
           <div className="max-w-[1300px] mx-auto px-4 md:px-10">
-            <div className="flex items-stretch overflow-x-auto">
+            <div className="flex flex-wrap justify-center">
               {specStrip.map(item => (
-                <div key={item.label} className="flex-1 flex flex-col items-center gap-1 py-1 border-r border-[#ece9e4] last:border-r-0">
-                  <span className="text-[22px] leading-none mb-0.5">{item.icon}</span>
-                  <span className="text-sm font-semibold text-[#111]">{item.value}</span>
-                  <span className="text-[11px] text-[#888] uppercase tracking-wide">{item.label}</span>
+                <div key={item.label} className="flex flex-col items-center gap-0.5 py-2 px-3 w-1/4 md:flex-1">
+                  <span className="text-sm leading-none mb-0.5">{item.icon}</span>
+                  <span className="text-xs font-semibold text-[#111]">{item.value}</span>
+                  <span className="text-[9px] text-[#888] uppercase tracking-wide">{item.label}</span>
                 </div>
               ))}
             </div>
@@ -374,19 +389,19 @@ export default function CamperDetailPage() {
 
 
       {/* ── NAPTÁR ────────────────────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-16 pt-10">
+      <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-8 md:mb-16 pt-4 md:pt-10">
         <AvailabilityCalendar />
       </div>
 
       {/* ── MŰSZAKI ADATOK ────────────────────────────────────────── */}
       {techSpecs.length > 0 && (
         <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-16 border-t border-[#ece9e4] pt-10">
-          <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-7">
+          <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-7 text-center md:text-left">
             Műszaki adatok
           </span>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-6">
             {techSpecs.map(spec => (
-              <div key={spec.label}>
+              <div key={spec.label} className="text-center md:text-left">
                 <p className="text-[11px] text-[#888] uppercase tracking-wider mb-1.5">{spec.label}</p>
                 <p className="text-[15px] font-semibold text-[#111]">{spec.value}</p>
               </div>
@@ -402,16 +417,17 @@ export default function CamperDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center mb-16 md:mb-24">
             <button
               onClick={() => setLightboxIndex(storyIdx1)}
-              className="block relative h-[500px] rounded-2xl overflow-hidden cursor-zoom-in group"
+              className="block relative h-[260px] md:h-[480px] rounded-2xl overflow-hidden cursor-zoom-in group"
             >
               <Image
                 src={allImages[storyIdx1]}
                 alt=""
                 fill
-                className="object-cover group-hover:scale-[1.02] transition-transform duration-700"
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
+                className="group-hover:scale-[1.02] transition-transform duration-700"
               />
             </button>
-            <div>
+            <div className="text-center md:text-left">
               <span className="block text-[11px] tracking-[0.22em] uppercase text-[#777] mb-4">A jármű</span>
               {camper.overview_title && (
                 <h2 className="text-[1.9rem] font-extrabold text-[#111] mb-5 leading-tight tracking-tight">
@@ -427,23 +443,18 @@ export default function CamperDetailPage() {
 
         {/* ── FELSZERELTSÉG ─────────────────────────────────────── */}
         <section className="mb-16 border-t border-[#ece9e4] pt-12">
-          <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-8">
+          <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-8 text-center">
             Felszereltség
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-12 gap-y-10">
-            {equipmentSections.map(sec => (
-              <div key={sec.title}>
-                <p className="text-[11px] tracking-[0.18em] uppercase text-[#777] font-semibold mb-3">
-                  {sec.title}
-                </p>
-                <ul className="space-y-2">
-                  {sec.items.map(item => (
-                    <li key={item} className="text-[15px] text-[#333] flex items-start gap-2.5">
-                      <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-[#aaa] flex-shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-fit mx-auto">
+            {equipmentSections.flatMap(sec => sec.items).map(item => (
+              <div key={item} className="flex items-center gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-[#1a3a2a]/8 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-2.5 h-2.5 text-[#1a3a2a]" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                <span className="text-[14px] text-[#333]">{item}</span>
               </div>
             ))}
           </div>
@@ -455,7 +466,7 @@ export default function CamperDetailPage() {
       {/* ── EXTRÁK ───────────────────────────────────────────────── */}
       <div className="max-w-[1300px] mx-auto px-4 md:px-10 py-14 border-t border-[#ece9e4]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-          <div>
+          <div className="text-center md:text-left">
             <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Személyre szabva</span>
             <h2 className="text-2xl font-extrabold text-[#111] mb-4 leading-tight">
               Pakold fel az autót mindazzal,<br />amire szükséged van
@@ -487,31 +498,12 @@ export default function CamperDetailPage() {
       </div>
 
       {/* ── AJÁNLOTT ÚTVONALAK ───────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-4 md:px-10 py-14 border-t border-[#ece9e4]">
-        <div className="text-center mb-10">
+      <div className="py-14 border-t border-[#ece9e4]">
+        <div className="text-center mb-8 px-4 md:px-10">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Nem tudod, merre indulj?</span>
           <h2 className="text-2xl font-extrabold text-[#111]">Fedezd fel Európa legszebb útvonalait ezzel a lakóautóval.</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {ALL_TRIPS.map(trip => (
-            <Link key={trip.id} href="/utazasok"
-              className="group relative block h-[260px]"
-              style={{ clipPath: 'polygon(20px 0, 100% 0, calc(100% - 20px) 100%, 0 100%)' }}>
-              <Image
-                src={trip.image}
-                alt={trip.name}
-                fill
-                sizes="(max-width: 1300px) 17vw, 200px"
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-8">
-                <h3 className="text-white text-base font-extrabold mb-1">{trip.name}</h3>
-                <span className="text-white/70 text-xs">{trip.days} nap</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <TripStack trips={DISPLAY_TRIPS} />
       </div>
 
       {/* ── CTA — kompakt lezárás ─────────────────────────────────── */}

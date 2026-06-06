@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 
 const NAV = [
   ['Útvonalak', '/utazasok'],
@@ -17,15 +16,13 @@ export default function PageHeader() {
 
   return (
     <>
-      <div className="relative w-full overflow-hidden" style={{ height: '90px' }}>
-        <Image
+      <div className="relative w-full" style={{ height: '70px' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/menu_pic.png"
           alt=""
-          fill
-          className="object-cover object-center"
-          priority
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
         />
-        <div className="absolute inset-0 bg-black/15" />
         <div className="absolute inset-0 z-10 flex items-center justify-between px-4 md:grid md:grid-cols-3 md:px-10">
           <Link href="/" className="text-white text-xl font-extrabold tracking-[0.15em] uppercase flex flex-col leading-tight">
             <span>VanLife</span>

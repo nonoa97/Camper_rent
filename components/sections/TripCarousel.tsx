@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
+import { useSwipe } from '@/hooks/useSwipe'
 import Image from 'next/image'
 
 const TRIPS = [
@@ -13,11 +14,11 @@ const TRIPS = [
 
 export default function TripCarousel() {
   const [index, setIndex] = useState(0)
-  const touchStartX = useRef(0)
   const n = TRIPS.length
 
   const prev = () => setIndex(i => (i - 1 + n) % n)
   const next = () => setIndex(i => (i + 1) % n)
+  const swipe = useSwipe(next, prev)
 
   const visible = [0, 1, 2].map(offset => TRIPS[(index + offset) % n])
 
@@ -37,15 +38,7 @@ export default function TripCarousel() {
             ‹
           </button>
 
-          <div
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1"
-            onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
-            onTouchEnd={e => {
-              const delta = touchStartX.current - e.changedTouches[0].clientX
-              if (delta > 50) next()
-              else if (delta < -50) prev()
-            }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1" {...swipe}>
             {visible.map((trip, i) => (
               <div key={trip.id} className={`group cursor-pointer ${i > 0 ? 'hidden md:block' : ''}`}>
                 <div className="relative h-56 rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">

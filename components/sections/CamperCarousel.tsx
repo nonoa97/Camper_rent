@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { useSwipe } from '@/hooks/useSwipe'
 import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -17,7 +18,6 @@ interface CarouselCamper {
 export default function CamperCarousel() {
   const [campers, setCampers] = useState<CarouselCamper[]>([])
   const [index, setIndex] = useState(0)
-  const touchStartX = useRef(0)
 
   useEffect(() => {
     async function load() {
@@ -40,12 +40,13 @@ export default function CamperCarousel() {
     load()
   }, [])
 
-  if (campers.length === 0) return null
-
-  const n = campers.length
+  const n = Math.max(campers.length, 1)
   const prev = () => setIndex(i => (i - 1 + n) % n)
   const next = () => setIndex(i => (i + 1) % n)
+  const swipe = useSwipe(next, prev)
   const visible = [0, 1, 2].map(offset => campers[(index + offset) % n])
+
+  if (campers.length === 0) return null
 
   return (
     <section className="py-8 md:py-14 px-4 md:px-10 bg-[#f5f5f5]">
@@ -58,15 +59,7 @@ export default function CamperCarousel() {
         <div className="relative flex items-center gap-3">
           <button onClick={prev} className="hidden md:flex flex-shrink-0 w-8 h-8 rounded-full border border-[#ccc] bg-white items-center justify-center hover:border-[#111] hover:shadow-sm transition-all text-[#333] text-base">‹</button>
 
-          <div
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1"
-            onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
-            onTouchEnd={e => {
-              const delta = touchStartX.current - e.changedTouches[0].clientX
-              if (delta > 50) next()
-              else if (delta < -50) prev()
-            }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1" {...swipe}>
             {visible.map((camper, i) => (
               <Link key={camper.id} href={`/katalogus/${camper.slug}`} className={`group cursor-pointer block ${i > 0 ? 'hidden md:block' : ''}`}>
                 <div className="relative h-56 rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">

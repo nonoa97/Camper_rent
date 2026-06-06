@@ -122,7 +122,7 @@ export default function AvailabilityCalendar() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <span className="text-[11px] tracking-[0.22em] uppercase text-[#666]">Elérhetőség</span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center">
           <button
             onClick={() => setOffset(o => Math.max(0, o - 1))}
             disabled={offset === 0}
@@ -141,7 +141,9 @@ export default function AvailabilityCalendar() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         <MonthGrid year={m1.getFullYear()} month={m1.getMonth()} bookings={DEMO_BOOKINGS} />
-        <MonthGrid year={m2.getFullYear()} month={m2.getMonth()} bookings={DEMO_BOOKINGS} />
+        <div className="hidden md:block">
+          <MonthGrid year={m2.getFullYear()} month={m2.getMonth()} bookings={DEMO_BOOKINGS} />
+        </div>
       </div>
 
       <div className="flex gap-6 mt-6 pt-5 border-t border-[#ece9e4]">
