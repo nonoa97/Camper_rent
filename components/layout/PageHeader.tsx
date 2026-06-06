@@ -16,8 +16,8 @@ export default function PageHeader() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="relative overflow-hidden">
-      <div className="relative h-36">
+    <>
+      <div className="relative w-full overflow-hidden" style={{ height: '90px' }}>
         <Image
           src="/menu_pic.png"
           alt=""
@@ -26,7 +26,7 @@ export default function PageHeader() {
           priority
         />
         <div className="absolute inset-0 bg-black/15" />
-        <div className="relative z-10 h-full grid grid-cols-3 items-center px-4 md:px-10">
+        <div className="absolute inset-0 z-10 flex items-center justify-between px-4 md:grid md:grid-cols-3 md:px-10">
           <Link href="/" className="text-white text-xl font-extrabold tracking-[0.15em] uppercase flex flex-col leading-tight">
             <span>VanLife</span>
             <span className="text-xs font-semibold tracking-[0.3em] text-white/60">EUROPE</span>
@@ -42,38 +42,42 @@ export default function PageHeader() {
 
           <div className="flex justify-end">
             <button
-              onClick={() => setOpen(o => !o)}
+              onClick={() => setOpen(true)}
               className="md:hidden text-white p-1"
-              aria-label="Menü"
+              aria-label="Menü megnyitása"
             >
-              {open ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
       {open && (
-        <div className="md:hidden bg-[#1a3a2a]/95 backdrop-blur-sm py-3 px-4 flex flex-col gap-1 absolute top-36 left-0 right-0 z-20">
+        <div className="md:hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-8">
+          <button
+            onClick={() => setOpen(false)}
+            className="absolute top-6 right-4 text-white p-1"
+            aria-label="Menü bezárása"
+          >
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
           {NAV.map(([label, href]) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="text-white/90 hover:text-white font-semibold py-3 px-3 rounded-lg hover:bg-white/10 transition-colors"
+              className="text-white text-3xl font-extrabold tracking-wide hover:text-white/60 transition-colors duration-200"
             >
               {label}
             </Link>
           ))}
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -22,20 +22,76 @@ interface CamperCard {
   features: string[]
 }
 
-const PRICE_RANGES = [
-  { label: 'Akár 40 000 Ft', min: 0, max: 40000 },
-  { label: '40 000 – 60 000 Ft', min: 40000, max: 60000 },
-  { label: '60 000 – 80 000 Ft', min: 60000, max: 80000 },
-  { label: '80 000 Ft felett', min: 80000, max: Infinity },
-]
+const PRICE_MIN = 0
+const PRICE_MAX = 120000
+const PRICE_STEP = 5000
 
 const KEY_FEATURES = ['Automata váltó', 'Manuális váltó', 'Zuhanyzó', 'WC', 'Főzőlap', 'WiFi', 'Légkondi', 'Fix ágy']
 
-function FilterSection({ label, children }: { label: string; children: React.ReactNode }) {
+function PriceSlider({ min, max, onChange }: {
+  min: number
+  max: number
+  onChange: (min: number, max: number) => void
+}) {
+  const minPct = ((min - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100
+  const maxPct = ((max - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100
+
+  const thumbStyle: React.CSSProperties = {
+    position: 'absolute', width: '100%', height: '100%',
+    appearance: 'none', background: 'none', pointerEvents: 'none',
+    outline: 'none', margin: 0, padding: 0,
+  }
+
   return (
-    <div className="py-5 border-b border-[#f0f0ee] last:border-0">
-      <p className="text-[10px] tracking-[0.2em] uppercase text-[#999] font-semibold mb-3">{label}</p>
-      <div className="flex flex-col gap-0.5">
+    <div className="pb-5 px-1">
+      <div className="flex justify-between text-xs text-[#666] mb-4">
+        <span>{min.toLocaleString('hu-HU')} Ft</span>
+        <span>{max >= PRICE_MAX ? `${PRICE_MAX.toLocaleString('hu-HU')}+ Ft` : `${max.toLocaleString('hu-HU')} Ft`}</span>
+      </div>
+      <div className="relative h-1.5">
+        <div className="absolute inset-0 bg-[#e8e8e4] rounded-full" />
+        <div
+          className="absolute h-full bg-[#1a3a2a] rounded-full"
+          style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
+        />
+        <style>{`
+          .price-thumb::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#fff; border:2px solid #1a3a2a; cursor:pointer; pointer-events:all; }
+          .price-thumb::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#fff; border:2px solid #1a3a2a; cursor:pointer; pointer-events:all; }
+        `}</style>
+        <input
+          type="range" min={PRICE_MIN} max={PRICE_MAX} step={PRICE_STEP} value={min}
+          className="price-thumb"
+          style={{ ...thumbStyle, zIndex: min >= max - PRICE_STEP ? 5 : 3 }}
+          onChange={e => { const v = Number(e.target.value); if (v <= max) onChange(v, max) }}
+        />
+        <input
+          type="range" min={PRICE_MIN} max={PRICE_MAX} step={PRICE_STEP} value={max}
+          className="price-thumb"
+          style={{ ...thumbStyle, zIndex: 4 }}
+          onChange={e => { const v = Number(e.target.value); if (v >= min) onChange(min, v) }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function FilterSection({ label, children, defaultOpen = false }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="border-b border-[#f0f0ee] last:border-0">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between py-4 text-left md:cursor-default"
+      >
+        <span className="text-[10px] tracking-[0.2em] uppercase text-[#999] font-semibold">{label}</span>
+        <svg
+          className={`md:hidden w-3.5 h-3.5 text-[#bbb] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div className={`flex-col gap-0.5 pb-4 ${open ? 'flex' : 'hidden md:flex'}`}>
         {children}
       </div>
     </div>
@@ -64,7 +120,8 @@ export default function KatalogusPage() {
 
   const [capacityId, setCapacityId] = useState<number | null>(null)
   const [typeId, setTypeId] = useState<number | null>(null)
-  const [priceRange, setPriceRange] = useState<string | null>(null)
+  const [minPrice, setMinPrice] = useState(PRICE_MIN)
+  const [maxPrice, setMaxPrice] = useState(PRICE_MAX)
 
   useEffect(() => {
     async function loadFilters() {
@@ -114,12 +171,9 @@ export default function KatalogusPage() {
     loadCampers()
   }, [capacityId, typeId])
 
-  const filtered = campers.filter(c => {
-    if (!priceRange) return true
-    const range = PRICE_RANGES.find(r => r.label === priceRange)
-    if (!range) return true
-    return c.price_per_day >= range.min && c.price_per_day < range.max
-  })
+  const filtered = campers.filter(c =>
+    c.price_per_day >= minPrice && c.price_per_day <= maxPrice
+  )
 
   return (
     <>
@@ -137,6 +191,14 @@ export default function KatalogusPage() {
 
         {/* Sidebar */}
         <aside className="w-full md:w-52 md:flex-shrink-0">
+          <FilterSection label="Ár / nap">
+            <PriceSlider
+              min={minPrice}
+              max={maxPrice}
+              onChange={(min, max) => { setMinPrice(min); setMaxPrice(max) }}
+            />
+          </FilterSection>
+
           <FilterSection label="Férőhely">
             <FilterBtn active={capacityId === null} onClick={() => setCapacityId(null)}>Mind</FilterBtn>
             {capacities.map(c => (
@@ -151,15 +213,6 @@ export default function KatalogusPage() {
             {types.map(t => (
               <FilterBtn key={t.id} active={typeId === t.id} onClick={() => setTypeId(t.id)}>
                 {t.name}
-              </FilterBtn>
-            ))}
-          </FilterSection>
-
-          <FilterSection label="Ár / nap">
-            <FilterBtn active={priceRange === null} onClick={() => setPriceRange(null)}>Mind</FilterBtn>
-            {PRICE_RANGES.map(r => (
-              <FilterBtn key={r.label} active={priceRange === r.label} onClick={() => setPriceRange(r.label)}>
-                {r.label}
               </FilterBtn>
             ))}
           </FilterSection>

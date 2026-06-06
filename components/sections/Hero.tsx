@@ -4,7 +4,7 @@ import Button from '../ui/Button'
 
 export default function Hero() {
   return (
-    <section className="relative flex items-center text-white overflow-hidden" style={{ height: '85vh' }}>
+    <section className="relative text-white overflow-hidden" style={{ height: '85vh' }}>
       <Image
         src="/hero.png"
         alt="Camper van a hegyekben"
@@ -12,17 +12,27 @@ export default function Hero() {
         priority
         className="object-cover object-center"
       />
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.28) 35%, rgba(0,0,0,0.0) 100%)' }} />
-      <div className="relative z-10 w-full px-6 md:px-12">
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.32) 45%, rgba(0,0,0,0.0) 100%)' }} />
+      <div className="relative z-10 w-full px-6 md:px-16 pt-28 md:pt-40">
         <h1
-          className="font-extrabold leading-[1.05] mb-4 max-w-xl"
-          style={{ fontSize: 'clamp(2.4rem, 4.6vw, 4.6rem)' }}
+          className="font-extrabold leading-[1.05] mb-4 md:mb-7 max-w-[52%] md:max-w-3xl"
+          style={{ fontSize: 'clamp(2.4rem, 7vw, 8rem)' }}
         >
           Fedezd fel Európát másképp
         </h1>
-        <p className="text-white/75 text-base mb-8 max-w-sm leading-relaxed">
+        <p className="text-white/75 text-base md:text-2xl max-w-[48%] md:max-w-xl leading-relaxed md:mb-10">
           Szabadság. Természet. Kaland. Az utazásod itt kezdődik.
         </p>
+        <div className="hidden md:flex md:max-w-xl md:justify-end">
+          <Link href="/fedezd-fel">
+            <Button variant="dark" className="font-semibold px-10 py-5 text-base rounded-lg tracking-wide hover:shadow-lg transition-shadow">
+              Kezdd el a kalandot →
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="absolute bottom-8 left-6 z-10 md:hidden">
         <Link href="/fedezd-fel">
           <Button variant="dark" className="font-semibold px-7 py-3.5 text-sm rounded-lg tracking-wide hover:shadow-lg transition-shadow">
             Kezdd el a kalandot →

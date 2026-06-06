@@ -60,53 +60,74 @@ export default function Footer() {
         </p>
       </div>
 
-      <div className="max-w-[1080px] mx-auto px-4 md:px-10 pt-7 pb-7 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 items-start">
+      <div className="max-w-[1080px] mx-auto px-4 md:px-10 pt-7 pb-7 items-start">
 
-        <div>
+        {/* Logo + leírás – mobilon középre, desktopon bal */}
+        <div className="text-center md:text-left mb-8 md:mb-0 md:hidden">
           <div className="text-lg font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
           <div className="text-[10px] tracking-[0.32em] text-[#777] uppercase mb-3">Europe</div>
-          <p className="text-[#555] text-xs leading-relaxed max-w-[190px]">
+          <p className="text-[#555] text-xs leading-relaxed mx-auto max-w-[220px]">
             Prémium lakóautó bérlés. Fedezd fel Európát szabadon, a saját tempódban.
           </p>
         </div>
 
-        <div>
-          <p className="text-[10px] tracking-[0.2em] uppercase text-[#777] mb-3 font-semibold">Navigáció</p>
-          <ul className="space-y-2">
-            {NAV.map(([label, href]) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className="text-[#444] hover:text-[#111] text-xs font-medium transition-colors duration-150 hover:translate-x-0.5 inline-block transform"
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* Navigáció + Kapcsolat – mobilon középre igazítva 2 oszlop, desktopon 3 oszlop */}
+        <div className="flex justify-center gap-12 md:grid md:grid-cols-3 md:gap-6">
 
-        <div>
-          <p className="text-[10px] tracking-[0.2em] uppercase text-[#777] mb-3 font-semibold">Kapcsolat</p>
-          <ul className="space-y-1.5 text-xs text-[#444] mb-5">
-            <li>info@vanlifeeurope.hu</li>
-            <li>+36 30 123 4567</li>
-            <li>Zalaegerszeg, Balatoni út 5-7</li>
-          </ul>
-          <div className="flex gap-4">
-            {SOCIAL.map((s) => (
-              <a
-                key={s.label}
-                href={s.href}
-                aria-label={s.label}
-                className="text-[#888] hover:text-[#111] transition-all duration-200 hover:-translate-y-0.5 transform"
-              >
-                {s.icon}
-              </a>
-            ))}
+          {/* Desktop-only logo col */}
+          <div className="hidden md:block">
+            <div className="text-lg font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
+            <div className="text-[10px] tracking-[0.32em] text-[#777] uppercase mb-3">Europe</div>
+            <p className="text-[#555] text-xs leading-relaxed max-w-[190px]">
+              Prémium lakóautó bérlés. Fedezd fel Európát szabadon, a saját tempódban.
+            </p>
           </div>
+
+          <div className="text-center md:text-left">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-[#777] mb-3 font-semibold">Navigáció</p>
+            <ul className="space-y-2">
+              {NAV.map(([label, href]) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="text-[#444] hover:text-[#111] text-xs font-medium transition-colors duration-150 hover:translate-x-0.5 inline-block transform"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="text-center md:text-left">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-[#777] mb-3 font-semibold">Kapcsolat</p>
+            <ul className="space-y-1.5 text-xs text-[#444] mb-5 break-all">
+              <li>info@vanlifeeurope.hu</li>
+              <li>+36 30 123 4567</li>
+              <li className="break-words">Zalaegerszeg, Balatoni út 5-7</li>
+            </ul>
+            {/* Social – desktopon itt marad */}
+            <div className="hidden md:flex gap-4">
+              {SOCIAL.map((s) => (
+                <a key={s.label} href={s.href} aria-label={s.label}
+                  className="text-[#888] hover:text-[#111] transition-all duration-200 hover:-translate-y-0.5 transform">
+                  {s.icon}
+                </a>
+              ))}
+            </div>
+          </div>
+
         </div>
 
+        {/* Social ikonok – mobilon középre a 2 oszlop alatt */}
+        <div className="flex md:hidden justify-center gap-5 mt-7">
+          {SOCIAL.map((s) => (
+            <a key={s.label} href={s.href} aria-label={s.label}
+              className="text-[#888] hover:text-[#111] transition-all duration-200 hover:-translate-y-0.5 transform">
+              {s.icon}
+            </a>
+          ))}
+        </div>
       </div>
 
       <div className="max-w-[1080px] mx-auto px-4 md:px-10 pb-4 text-center text-[11px] text-[#888] tracking-wide border-t border-[#e0e0de] pt-3">

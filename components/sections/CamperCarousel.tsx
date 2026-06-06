@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -17,6 +17,7 @@ interface CarouselCamper {
 export default function CamperCarousel() {
   const [campers, setCampers] = useState<CarouselCamper[]>([])
   const [index, setIndex] = useState(0)
+  const touchStartX = useRef(0)
 
   useEffect(() => {
     async function load() {
@@ -55,9 +56,17 @@ export default function CamperCarousel() {
         </div>
 
         <div className="relative flex items-center gap-3">
-          <button onClick={prev} className="flex-shrink-0 w-8 h-8 rounded-full border border-[#ccc] bg-white flex items-center justify-center hover:border-[#111] hover:shadow-sm transition-all text-[#333] text-base">‹</button>
+          <button onClick={prev} className="hidden md:flex flex-shrink-0 w-8 h-8 rounded-full border border-[#ccc] bg-white items-center justify-center hover:border-[#111] hover:shadow-sm transition-all text-[#333] text-base">‹</button>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+          <div
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1"
+            onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+            onTouchEnd={e => {
+              const delta = touchStartX.current - e.changedTouches[0].clientX
+              if (delta > 50) next()
+              else if (delta < -50) prev()
+            }}
+          >
             {visible.map((camper, i) => (
               <Link key={camper.id} href={`/katalogus/${camper.slug}`} className={`group cursor-pointer block ${i > 0 ? 'hidden md:block' : ''}`}>
                 <div className="relative h-56 rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">
@@ -80,7 +89,7 @@ export default function CamperCarousel() {
             ))}
           </div>
 
-          <button onClick={next} className="flex-shrink-0 w-8 h-8 rounded-full border border-[#ccc] bg-white flex items-center justify-center hover:border-[#111] hover:shadow-sm transition-all text-[#333] text-base">›</button>
+          <button onClick={next} className="hidden md:flex flex-shrink-0 w-8 h-8 rounded-full border border-[#ccc] bg-white items-center justify-center hover:border-[#111] hover:shadow-sm transition-all text-[#333] text-base">›</button>
         </div>
 
         <div className="flex justify-center gap-1.5 mt-6">

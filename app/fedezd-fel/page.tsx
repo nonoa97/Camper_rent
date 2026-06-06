@@ -14,7 +14,7 @@ export default function FedezdFelPage() {
     <>
       <PageHeader />
 
-      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-16">
+      <section className="max-w-xs md:max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-16">
 
         <div className="text-center mb-10">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-4">Kezdd el a kalandot</span>
