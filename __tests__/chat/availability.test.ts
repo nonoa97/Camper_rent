@@ -36,8 +36,8 @@ vi.mock('@/lib/supabase', () => ({
             name: 'Hobby T75HF',
             image_url: '/hobby.jpg',
             price_per_day: 35000,
-            camper_types: { name: 'Alkovos' },
-            capacities: { label: '1-6 fo' },
+            type: 'Alkóvos',
+            beds: 6,
             wild_camping_suitable: true,
           }],
         })
@@ -153,7 +153,7 @@ describe('Availability - GPT context uses computed slots only', () => {
         image_url: '/hobby.jpg',
         price_per_day: 35000,
         type: 'Alkovos',
-        capacity: '1-6 fo',
+        beds: 6,
         wildCampingSuitable: true,
         availableSlots: [
           { from: '2026-07-01', to: '2026-07-08', days: 8 },

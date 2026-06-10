@@ -17,9 +17,8 @@ export default function CamperGrid({ campers }: { campers: Camper[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {campers.map(camper => {
-        const capacity = (camper as any).capacities?.label
-        const type = (camper as any).camper_types?.name
-        const comfort = (camper as any).comfort_levels?.name
+        const beds = (camper as any).beds as number | null | undefined
+        const type = (camper as any).type
         const price = (camper as any).price_per_day
           ? `${(camper as any).price_per_day.toLocaleString('hu-HU')} Ft`
           : null
@@ -34,9 +33,8 @@ export default function CamperGrid({ campers }: { campers: Camper[] }) {
             )}
             <div className="p-6">
               <div className="flex gap-2 mb-3 text-xs text-[#888] uppercase tracking-wider">
-                {capacity && <span>{capacity} fő</span>}
+                {beds != null && <span>{beds} fő</span>}
                 {type && <><span>·</span><span>{type}</span></>}
-                {comfort && <><span>·</span><span>{comfort}</span></>}
               </div>
               <h3 className="text-xl font-bold text-[#111] mb-2">{camper.name}</h3>
               {camper.description && (

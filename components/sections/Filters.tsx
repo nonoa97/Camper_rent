@@ -3,15 +3,12 @@
 interface FiltersProps {
   people: string
   type: string
-  comfort: string
   onPeople: (v: string) => void
   onType: (v: string) => void
-  onComfort: (v: string) => void
 }
 
-const PEOPLE = ['Összes', '2-3', '2-4', '4-6', '6+']
-const TYPES = ['Összes', 'camper-van', 'alkóvos', 'integrált']
-const COMFORT = ['Összes', 'alap', 'comfort', 'prémium']
+const PEOPLE = ['Összes', '2+', '4+', '6+']
+const TYPES = ['Összes', 'Camper van', 'Alkóvos', 'Integrált', 'Félintegrált']
 
 function FilterGroup({ label, options, value, onChange }: {
   label: string
@@ -39,12 +36,11 @@ function FilterGroup({ label, options, value, onChange }: {
   )
 }
 
-export default function Filters({ people, type, comfort, onPeople, onType, onComfort }: FiltersProps) {
+export default function Filters({ people, type, onPeople, onType }: FiltersProps) {
   return (
     <div className="flex flex-col gap-4 py-6">
       <FilterGroup label="Férőhely" options={PEOPLE} value={people} onChange={onPeople} />
       <FilterGroup label="Típus" options={TYPES} value={type} onChange={onType} />
-      <FilterGroup label="Kényelem" options={COMFORT} value={comfort} onChange={onComfort} />
     </div>
   )
 }

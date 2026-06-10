@@ -1,20 +1,6 @@
-export interface Capacity {
-  id: number
-  label: string
-  sort_order: number
-}
-
-export interface CamperType {
-  id: number
-  name: string
-  sort_order: number
-}
-
-export interface ComfortLevel {
-  id: number
-  name: string
-  sort_order: number
-}
+export type CamperGearbox = 'Automata' | 'Manuális'
+export type CamperFuel = 'Dízel' | 'Benzin' | 'Elektromos' | 'Hibrid'
+export type CamperType = 'Camper van' | 'Alkóvos' | 'Integrált' | 'Félintegrált'
 
 export interface Feature {
   id: number
@@ -26,13 +12,8 @@ export interface Camper {
   id: string
   name: string
   slug?: string
-  capacity_id?: number
-  type_id?: number
-  comfort_id?: number
-  // joined relations (when queried with select)
-  capacity?: Capacity
-  camper_type?: CamperType
-  comfort_level?: ComfortLevel
+  beds?: number | null
+  type?: CamperType | null
   features?: Feature[]
   description?: string
   image_url?: string
@@ -41,6 +22,10 @@ export interface Camper {
   detail_url?: string
   inquiry_url?: string
   created_at?: string
+  gearbox?: CamperGearbox | null
+  fuel_type?: CamperFuel | null
+  year?: number | null
+  wild_camping_suitable?: boolean | null
 }
 
 export interface Trip {

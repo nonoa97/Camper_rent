@@ -12,7 +12,7 @@ interface CarouselCamper {
   slug: string
   price_per_day: number
   image_url: string | null
-  capacity: string
+  beds: number | null
 }
 
 export default function CamperCarousel() {
@@ -22,7 +22,7 @@ export default function CamperCarousel() {
   useEffect(() => {
     async function load() {
       const [{ data }, { data: priceRows }] = await Promise.all([
-        supabase.from('campers').select('id, name, slug, image_url, capacities(label)').eq('available', true).order('created_at'),
+        supabase.from('campers').select('id, name, slug, image_url, beds').eq('available', true).order('created_at'),
         supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak'),
       ])
       const peakPrices: Record<string, number> = {}
@@ -34,7 +34,7 @@ export default function CamperCarousel() {
           slug: c.slug,
           price_per_day: peakPrices[c.id] ?? 0,
           image_url: c.image_url,
-          capacity: c.capacities?.label ?? '',
+          beds: c.beds ?? null,
         })))
       }
     }
@@ -78,7 +78,7 @@ export default function CamperCarousel() {
                   </div>
                 </div>
                 <p className="text-[#111] font-semibold text-sm">{camper.name}</p>
-                <p className="text-[#888] text-xs mt-0.5">{camper.capacity} fő</p>
+                {camper.beds != null && <p className="text-[#888] text-xs mt-0.5">{camper.beds} fő</p>}
               </Link>
             ))}
           </div>

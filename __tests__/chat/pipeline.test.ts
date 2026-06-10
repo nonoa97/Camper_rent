@@ -101,7 +101,7 @@ const mockCamper: CamperResult = {
   image_url: 'https://example.com/hobby.jpg',
   price_per_day: 35000,
   type: 'Alkóvos',
-  capacity: '1-6 fő',
+  beds: 6,
   wildCampingSuitable: true,
   availableSlots: [{ from: '2026-08-01', to: '2026-08-07', days: 7 }],
 }
@@ -1722,7 +1722,7 @@ describe('Flow 17 – Anti-hallucination: honest uncertainty rules', () => {
 
   describe('recommend mode context includes data source warning', () => {
     const baseCamper = {
-      slug: 'hobby-t75hf', name: 'Hobby T75HF', type: 'alkóvos', capacity: '6 fő',
+      slug: 'hobby-t75hf', name: 'Hobby T75HF', type: 'alkóvos', beds: 6,
       price_per_day: 38000, image_url: '/img.jpg', wildCampingSuitable: false,
       availableSlots: [{ from: '2026-08-01', to: '2026-08-10', days: 9 }],
     }
@@ -1767,7 +1767,7 @@ describe('Flow 17 – Anti-hallucination: honest uncertainty rules', () => {
 // ──────────────────────────────────────────────────────────────
 describe('Flow 18 – Summarize: shouldSummarize flag in GPT context', () => {
   const baseCamper: CamperResult = {
-    slug: 'hobby-t75hf', name: 'Hobby T75HF', type: 'alkóvos', capacity: '6 fő',
+    slug: 'hobby-t75hf', name: 'Hobby T75HF', type: 'alkóvos', beds: 6,
     price_per_day: 38000, image_url: '/img.jpg', wildCampingSuitable: false,
     availableSlots: [{ from: '2026-08-01', to: '2026-08-10', days: 9 }],
   }

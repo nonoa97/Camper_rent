@@ -9,6 +9,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import AvailabilityCalendar from '@/components/sections/AvailabilityCalendar'
 import TripStack from '@/components/sections/TripStack'
 import { supabase } from '@/lib/supabase'
+import type { CamperGearbox, CamperFuel } from '@/lib/types'
 
 interface TripCard {
   id: string
@@ -34,7 +35,6 @@ const ALL_TRIPS: TripCard[] = [
   { id: '6', name: 'Norvég fjordok',         days: 14, image: 'https://images.unsplash.com/photo-1601439678777-b2b3c56fa627?w=800&q=80' },
 ]
 
-
 function getSuggestedTrips(type: string): TripCard[] {
   if (type === 'camper-van') return [ALL_TRIPS[0], ALL_TRIPS[2], ALL_TRIPS[3], ALL_TRIPS[5]]
   if (type === 'integrált')  return [ALL_TRIPS[1], ALL_TRIPS[0], ALL_TRIPS[3], ALL_TRIPS[4]]
@@ -46,6 +46,8 @@ interface CamperFeature {
   emoji: string | null
   highlight_title: string | null
   highlight_desc: string | null
+  category_name: string | null
+  category_sort: number | null
 }
 
 interface CamperDetail {
@@ -59,12 +61,11 @@ interface CamperDetail {
   image_url: string | null
   images: string[]
   available: boolean
-  capacity: string
+  beds: number | null
   type: string
-  comfort: string
   year: number | null
-  gearbox: string | null
-  fuel_type: string | null
+  gearbox: CamperGearbox | null
+  fuel_type: CamperFuel | null
   features: CamperFeature[]
 }
 
@@ -87,12 +88,9 @@ export default function CamperDetailPage() {
         .select(`
           id, name, slug, description, overview_title, overview_body,
           image_url, available,
-          year, gearbox, fuel_type,
-          capacities(label),
-          camper_types:type_id(name),
-          comfort_levels:comfort_id(name),
+          year, gearbox, fuel_type, type, beds,
           camper_features(
-            features(name, icon, emoji, highlight_title, highlight_desc)
+            features(name, emoji, highlight_title, highlight_desc, category_id, feature_categories(name, sort_order))
           ),
           camper_images(url, sort_order)
         `)
@@ -113,6 +111,8 @@ export default function CamperDetailPage() {
             emoji: cf.features?.emoji ?? null,
             highlight_title: cf.features?.highlight_title ?? null,
             highlight_desc: cf.features?.highlight_desc ?? null,
+            category_name: cf.features?.feature_categories?.name ?? null,
+            category_sort: cf.features?.feature_categories?.sort_order ?? null,
           }))
           .filter((f: CamperFeature) => f.name)
 
@@ -128,9 +128,8 @@ export default function CamperDetailPage() {
           year: c.year ?? null,
           gearbox: c.gearbox ?? null,
           fuel_type: c.fuel_type ?? null,
-          capacity: (c.capacities as any)?.label ?? '',
-          type: (c.camper_types as any)?.name ?? '',
-          comfort: (c.comfort_levels as any)?.name ?? '',
+          beds: c.beds ?? null,
+          type: c.type ?? '',
           features,
         })
       }
@@ -171,71 +170,46 @@ export default function CamperDetailPage() {
   const overviewLines = camper.overview_body ? camper.overview_body.split('\n').filter(Boolean) : []
 
   const quickItems = [
-    camper.capacity          ? { icon: '👥', label: `${camper.capacity} fő` }          : null,
-    camper.gearbox           ? { icon: '⚙️', label: camper.gearbox }                    : null,
-    camper.fuel_type         ? { icon: '⛽', label: camper.fuel_type }                  : null,
-    camper.year              ? { icon: '📅', label: `${camper.year}` }                  : null,
-    hasFeature('Zuhanyzó')            ? { icon: '🚿', label: 'Saját zuhanyzó' }          : null,
-    hasFeature('WC')                  ? { icon: '🚽', label: 'Saját WC' }               : null,
-    hasFeature('Napelemes rendszer')  ? { icon: '☀️', label: 'Napelemes rendszer' }     : null,
-    hasFeature('Légkondi')            ? { icon: '❄️', label: 'Légkondicionáló' }        : null,
+    camper.beds != null       ? { icon: '👥', label: `${camper.beds} fő` }             : null,
+    camper.gearbox            ? { icon: '⚙️', label: camper.gearbox }                   : null,
+    camper.fuel_type          ? { icon: '⛽', label: camper.fuel_type }                 : null,
+    camper.year               ? { icon: '📅', label: `${camper.year}` }                 : null,
+    hasFeature('Zuhanyzó')        ? { icon: '🚿', label: 'Saját zuhanyzó' }     : null,
+    hasFeature('Kazettás WC')     ? { icon: '🚽', label: 'Saját WC' }           : null,
+    hasFeature('Napelem')         ? { icon: '☀️', label: 'Napelemes rendszer' } : null,
+    hasFeature('Lakótéri klíma')  ? { icon: '❄️', label: 'Légkondicionáló' }   : null,
   ].filter(Boolean) as { icon: string; label: string }[]
 
-  const equipmentSections = [
-    {
-      title: 'Alvás',
-      items: [
-        camper.capacity ? `${camper.capacity} fő kapacitás` : null,
-        hasFeature('Fix ágy') ? 'Fix fekhely' : null,
-        'Kényelmes matrac',
-      ].filter(Boolean) as string[],
-    },
-    {
-      title: 'Konyha',
-      items: [
-        hasFeature('Főzőlap') ? 'Gázfőzőlap' : null,
-        hasFeature('Hűtő') ? 'Hűtőszekrény' : null,
-        'Mosogató vízzel',
-      ].filter(Boolean) as string[],
-    },
-    ...(hasFeature('Zuhanyzó') || hasFeature('WC') ? [{
-      title: 'Fürdő',
-      items: [
-        hasFeature('Zuhanyzó') ? 'Saját zuhanyzó' : null,
-        hasFeature('WC') ? 'Saját WC' : null,
-        hasFeature('Külső zuhany') ? 'Külső zuhany' : null,
-      ].filter(Boolean) as string[],
-    }] : []),
-    ...(hasFeature('Napelemes rendszer') ? [{
-      title: 'Energia',
-      items: ['Napelemes rendszer', '230V külső csatlakozás'],
-    }] : []),
-    {
-      title: 'Tárolás',
-      items: ['Tágas csomagtér', 'Belső rekeszek', 'Külső tárolórekesz'],
-    },
-  ]
+  const featuresByCategory = camper.features.reduce((acc, f) => {
+    const key = f.category_name ?? 'Egyéb'
+    const sort = f.category_sort ?? 99
+    if (!acc[key]) acc[key] = { items: [], sort }
+    acc[key].items.push(f.name)
+    return acc
+  }, {} as Record<string, { items: string[]; sort: number }>)
+
+  const sortedCategories = Object.entries(featuresByCategory)
+    .sort(([, a], [, b]) => a.sort - b.sort)
 
   const techSpecs = [
-    camper.year      ? { label: 'Évjárat',    value: String(camper.year) }         : null,
-    camper.fuel_type ? { label: 'Üzemanyag',  value: camper.fuel_type }            : null,
-    camper.gearbox   ? { label: 'Váltó',      value: camper.gearbox }              : null,
-    camper.capacity  ? { label: 'Férőhely',   value: `${camper.capacity} fő` }     : null,
-    hasFeature('Fix ágy')               ? { label: 'Fekvőhelyek', value: 'Fix + átalakuló' }  : null,
-    hasFeature('Napelemes rendszer')    ? { label: 'Napelem',     value: 'Igen' }              : null,
-    hasFeature('Légkondi')              ? { label: 'Klíma',       value: 'Igen' }              : null,
-    camper.type ? { label: 'Típus', value: camper.type } : null,
+    camper.year        ? { label: 'Évjárat',   value: String(camper.year) } : null,
+    camper.fuel_type   ? { label: 'Üzemanyag', value: camper.fuel_type }    : null,
+    camper.gearbox     ? { label: 'Váltó',     value: camper.gearbox }      : null,
+    camper.beds != null ? { label: 'Férőhely', value: `${camper.beds} fő` } : null,
+    hasFeature('Napelem')        ? { label: 'Napelem', value: 'Igen' }       : null,
+    hasFeature('Lakótéri klíma') ? { label: 'Klíma',   value: 'Igen' }      : null,
+    camper.type        ? { label: 'Típus',     value: camper.type }         : null,
   ].filter(Boolean) as { label: string; value: string }[]
 
   const specStrip = [
-    camper.capacity  ? { icon: '👥', value: `${camper.capacity} fő`, label: 'Férőhely' }        : null,
-    camper.gearbox   ? { icon: '⚙️', value: camper.gearbox,          label: 'Váltó' }            : null,
-    camper.fuel_type ? { icon: '⛽', value: camper.fuel_type,         label: 'Üzemanyag' }        : null,
-    camper.year      ? { icon: '📅', value: String(camper.year),      label: 'Évjárat' }          : null,
-    hasFeature('Zuhanyzó')           ? { icon: '🚿', value: 'Saját',  label: 'Zuhanyzó' }        : null,
-    hasFeature('WC')                 ? { icon: '🚽', value: 'Saját',  label: 'WC' }              : null,
-    hasFeature('Napelemes rendszer') ? { icon: '☀️', value: 'Igen',   label: 'Napelem' }         : null,
-    hasFeature('Légkondi')           ? { icon: '❄️', value: 'Igen',   label: 'Légkondi' }        : null,
+    camper.beds != null  ? { icon: '👥', value: `${camper.beds} fő`, label: 'Férőhely' }          : null,
+    camper.gearbox       ? { icon: '⚙️', value: camper.gearbox,       label: 'Váltó' }             : null,
+    camper.fuel_type     ? { icon: '⛽', value: camper.fuel_type,      label: 'Üzemanyag' }         : null,
+    camper.year          ? { icon: '📅', value: String(camper.year),   label: 'Évjárat' }           : null,
+    hasFeature('Zuhanyzó')       ? { icon: '🚿', value: 'Saját', label: 'Zuhanyzó' }       : null,
+    hasFeature('Kazettás WC')    ? { icon: '🚽', value: 'Saját', label: 'WC' }             : null,
+    hasFeature('Napelem')        ? { icon: '☀️', value: 'Igen',  label: 'Napelem' }        : null,
+    hasFeature('Lakótéri klíma') ? { icon: '❄️', value: 'Igen',  label: 'Légkondi' }      : null,
   ].filter(Boolean) as { icon: string; value: string; label: string }[]
 
   const thumbImages = allImages.slice(1, 5)
@@ -265,7 +239,6 @@ export default function CamperDetailPage() {
                 />
               </button>
 
-              {/* Prev */}
               {allImages.length > 1 && (
                 <button
                   onClick={e => { e.stopPropagation(); setHeroIndex(i => (i - 1 + allImages.length) % allImages.length) }}
@@ -275,7 +248,6 @@ export default function CamperDetailPage() {
                 </button>
               )}
 
-              {/* Next */}
               {allImages.length > 1 && (
                 <button
                   onClick={e => { e.stopPropagation(); setHeroIndex(i => (i + 1) % allImages.length) }}
@@ -285,7 +257,6 @@ export default function CamperDetailPage() {
                 </button>
               )}
 
-              {/* Counter */}
               {allImages.length > 1 && (
                 <span className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full">
                   {heroIndex + 1} / {allImages.length}
@@ -293,7 +264,6 @@ export default function CamperDetailPage() {
               )}
             </div>
 
-            {/* Gallery thumbnails */}
             {thumbImages.length > 0 && (
               <div className={`grid gap-2 mb-7 ${
                 thumbImages.length === 1 ? 'grid-cols-1' :
@@ -337,7 +307,6 @@ export default function CamperDetailPage() {
                 {camper.description}
               </p>
             )}
-
           </div>
 
           <div className="sticky top-24">
@@ -377,7 +346,6 @@ export default function CamperDetailPage() {
         </div>
       </div>
 
-
       {/* ── SPEC STRIP ────────────────────────────────────────────── */}
       {specStrip.length > 0 && (
         <div className="border-y border-[#ece9e4] py-4 mb-6 md:mb-10">
@@ -394,7 +362,6 @@ export default function CamperDetailPage() {
           </div>
         </div>
       )}
-
 
       {/* ── NAPTÁR ────────────────────────────────────────────────── */}
       <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-8 md:mb-16 pt-4 md:pt-10">
@@ -450,24 +417,30 @@ export default function CamperDetailPage() {
         )}
 
         {/* ── FELSZERELTSÉG ─────────────────────────────────────── */}
-        <section className="mb-16 border-t border-[#ece9e4] pt-12">
-          <span className="block text-[11px] tracking-[0.22em] uppercase text-[#666] mb-8 text-center">
-            Felszereltség
-          </span>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-fit mx-auto">
-            {equipmentSections.flatMap(sec => sec.items).map(item => (
-              <div key={item} className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-[#1a3a2a]/8 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-2.5 h-2.5 text-[#1a3a2a]" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
-                <span className="text-[14px] text-[#333]">{item}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
+        {sortedCategories.length > 0 && (
+          <section className="mb-16 border-t border-[#ece9e4] pt-12">
+            <p className="text-[11px] tracking-[0.22em] uppercase text-[#666] mb-12 text-center">
+              Felszereltség
+            </p>
+            <div className="space-y-9 max-w-3xl mx-auto">
+              {sortedCategories.map(([catName, { items }]) => (
+                <div key={catName}>
+                  <div className="flex items-center gap-5 mb-4">
+                    <span className="text-[10px] tracking-[0.28em] uppercase text-[#aaa] whitespace-nowrap font-medium">
+                      {catName}
+                    </span>
+                    <span className="flex-1 h-px bg-[#ece9e4]" />
+                  </div>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2.5">
+                    {items.map(name => (
+                      <span key={name} className="text-[14px] text-[#333] leading-snug">{name}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
       </div>
 
@@ -514,7 +487,7 @@ export default function CamperDetailPage() {
         <TripStack trips={DISPLAY_TRIPS} />
       </div>
 
-      {/* ── CTA — kompakt lezárás ─────────────────────────────────── */}
+      {/* ── CTA ───────────────────────────────────────────────────── */}
       <section className="relative flex items-center justify-center text-white py-24 overflow-hidden">
         <Image src="/cta-katalogus.png" alt="" fill className="object-cover object-center" />
         <div className="absolute inset-0 bg-black/45" />

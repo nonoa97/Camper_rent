@@ -5,20 +5,21 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import PageHeader from '@/components/layout/PageHeader'
+import type { CamperGearbox, CamperFuel, CamperType } from '@/lib/types'
 
-interface FilterOption { id: number; label?: string; name?: string }
+const CAMPER_TYPES: CamperType[] = ['Camper van', 'Alkóvos', 'Integrált', 'Félintegrált']
+
 interface CamperCard {
   id: string
   name: string
   slug: string
   price_per_day: number
   image_url: string | null
-  capacity_id: number | null
-  type_id: number | null
-  capacity: string
+  beds: number | null
+  type: CamperType | null
   year: number | null
-  gearbox: string | null
-  fuel_type: string | null
+  gearbox: CamperGearbox | null
+  fuel_type: CamperFuel | null
   features: string[]
 }
 
@@ -113,38 +114,24 @@ function FilterBtn({ active, onClick, children }: { active: boolean; onClick: ()
   )
 }
 
+const BED_FILTERS = [2, 4, 6]
+
 export default function KatalogusPage() {
   const [campers, setCampers] = useState<CamperCard[]>([])
-  const [capacities, setCapacities] = useState<FilterOption[]>([])
-  const [types, setTypes] = useState<FilterOption[]>([])
-
-  const [capacityId, setCapacityId] = useState<number | null>(null)
-  const [typeId, setTypeId] = useState<number | null>(null)
+  const [minBeds, setMinBeds] = useState<number | null>(null)
+  const [typeFilter, setTypeFilter] = useState<CamperType | null>(null)
   const [minPrice, setMinPrice] = useState(PRICE_MIN)
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX)
-
-  useEffect(() => {
-    async function loadFilters() {
-      const [cap, typ] = await Promise.all([
-        supabase.from('capacities').select('id, label, sort_order').order('sort_order'),
-        supabase.from('camper_types').select('id, name, sort_order').order('sort_order'),
-      ])
-      if (cap.data) setCapacities(cap.data)
-      if (typ.data) setTypes(typ.data)
-    }
-    loadFilters()
-  }, [])
 
   useEffect(() => {
     async function loadCampers() {
       let query = supabase
         .from('campers')
-        .select('id, name, slug, image_url, capacity_id, type_id, year, gearbox, fuel_type, capacities(label), camper_features(features(name))')
+        .select('id, name, slug, image_url, beds, type, year, gearbox, fuel_type, camper_features(features(name))')
         .eq('available', true)
         .order('name')
 
-      if (capacityId) query = query.eq('capacity_id', capacityId)
-      if (typeId) query = query.eq('type_id', typeId)
+      if (typeFilter) query = query.eq('type', typeFilter)
 
       const [{ data }, { data: priceRows }] = await Promise.all([
         query,
@@ -159,9 +146,8 @@ export default function KatalogusPage() {
           slug: c.slug,
           price_per_day: peakPrices[c.id] ?? 0,
           image_url: c.image_url,
-          capacity_id: c.capacity_id,
-          type_id: c.type_id,
-          capacity: c.capacities?.label ?? '',
+          beds: c.beds ?? null,
+          type: c.type ?? null,
           year: c.year ?? null,
           gearbox: c.gearbox ?? null,
           fuel_type: c.fuel_type ?? null,
@@ -174,11 +160,13 @@ export default function KatalogusPage() {
       }
     }
     loadCampers()
-  }, [capacityId, typeId])
+  }, [typeFilter])
 
-  const filtered = campers.filter(c =>
-    c.price_per_day >= minPrice && c.price_per_day <= maxPrice
-  )
+  const filtered = campers.filter(c => {
+    if (c.price_per_day < minPrice || c.price_per_day > maxPrice) return false
+    if (minBeds !== null && (c.beds ?? 0) < minBeds) return false
+    return true
+  })
 
   return (
     <>
@@ -205,19 +193,19 @@ export default function KatalogusPage() {
           </FilterSection>
 
           <FilterSection label="Férőhely">
-            <FilterBtn active={capacityId === null} onClick={() => setCapacityId(null)}>Mind</FilterBtn>
-            {capacities.map(c => (
-              <FilterBtn key={c.id} active={capacityId === c.id} onClick={() => setCapacityId(c.id)}>
-                {c.label} fő
+            <FilterBtn active={minBeds === null} onClick={() => setMinBeds(null)}>Mind</FilterBtn>
+            {BED_FILTERS.map(n => (
+              <FilterBtn key={n} active={minBeds === n} onClick={() => setMinBeds(n)}>
+                {n}+ fő
               </FilterBtn>
             ))}
           </FilterSection>
 
           <FilterSection label="Típus">
-            <FilterBtn active={typeId === null} onClick={() => setTypeId(null)}>Mind</FilterBtn>
-            {types.map(t => (
-              <FilterBtn key={t.id} active={typeId === t.id} onClick={() => setTypeId(t.id)}>
-                {t.name}
+            <FilterBtn active={typeFilter === null} onClick={() => setTypeFilter(null)}>Mind</FilterBtn>
+            {CAMPER_TYPES.map(t => (
+              <FilterBtn key={t} active={typeFilter === t} onClick={() => setTypeFilter(t)}>
+                {t}
               </FilterBtn>
             ))}
           </FilterSection>
@@ -245,8 +233,8 @@ export default function KatalogusPage() {
                     <h3 className="text-lg font-extrabold text-[#111] mb-3">{camper.name}</h3>
 
                     <div className="flex flex-wrap gap-1.5 mb-4">
-                      {camper.capacity && (
-                        <span className="text-[11px] text-[#555] bg-[#f0f0ec] px-2.5 py-1 rounded-full">👥 {camper.capacity} fő</span>
+                      {camper.beds != null && (
+                        <span className="text-[11px] text-[#555] bg-[#f0f0ec] px-2.5 py-1 rounded-full">👥 {camper.beds} fő</span>
                       )}
                       {camper.year && (
                         <span className="text-[11px] text-[#555] bg-[#f0f0ec] px-2.5 py-1 rounded-full">📅 {camper.year}</span>

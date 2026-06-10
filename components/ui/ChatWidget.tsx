@@ -13,7 +13,7 @@ interface Recommendation {
   image_url: string
   price_per_day: number
   type: string | null
-  capacity: string | null
+  beds: number | null
 }
 
 interface AvailSlot {
@@ -22,7 +22,7 @@ interface AvailSlot {
   image_url: string
   price_per_day: number
   type: string | null
-  capacity: string | null
+  beds: number | null
   from: string
   to: string
   days: number
@@ -86,14 +86,14 @@ const CamperCard = ({
   name,
   image_url,
   type,
-  capacity,
+  beds,
   price_per_day,
 }: {
   slug: string
   name: string
   image_url: string
   type: string | null
-  capacity: string | null
+  beds: number | null
   price_per_day: number
 }) => (
   <Link
@@ -118,7 +118,7 @@ const CamperCard = ({
             {type}
           </span>
         )}
-        {capacity && <span className="text-[10px] text-[#888]">{capacity} fő</span>}
+        {beds != null && <span className="text-[10px] text-[#888]">{beds} fő</span>}
       </div>
       <div className="flex items-center justify-between mt-0.5">
         <span className="text-xs font-bold" style={{ color: '#1a3a2a' }}>
@@ -298,7 +298,7 @@ export default function ChatWidget() {
                           name={slot.name}
                           image_url={slot.image_url}
                           type={slot.type}
-                          capacity={slot.capacity}
+                          beds={slot.beds}
                           price_per_day={slot.price_per_day}
                         />
                       </div>
@@ -317,7 +317,7 @@ export default function ChatWidget() {
                       name={rec.name}
                       image_url={rec.image_url}
                       type={rec.type}
-                      capacity={rec.capacity}
+                      beds={rec.beds}
                       price_per_day={rec.price_per_day}
                     />
                   </div>

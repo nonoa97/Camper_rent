@@ -27,7 +27,7 @@ export interface MentionedCamperMemory {
   name?: string
   pricePerDay?: number
   type?: string | null
-  capacity?: string | null
+  beds?: number | null
   reason?: string
 }
 

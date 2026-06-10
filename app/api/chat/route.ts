@@ -48,7 +48,7 @@ type EnrichedRecommendation = {
   image_url: string
   price_per_day: number
   type: string | null
-  capacity: string | null
+  beds: number | null
 }
 
 type AvailabilitySlot = {
@@ -57,7 +57,7 @@ type AvailabilitySlot = {
   image_url: string
   price_per_day: number
   type: string | null
-  capacity: string | null
+  beds: number | null
   from: string
   to: string
   days: number
@@ -72,11 +72,6 @@ function countKnownFields(s: ConversationState): number {
   if (s.extraRequirements?.length) n++
   if (s.softPreferences?.length) n++
   return n
-}
-
-function parseCapacity(c: CamperResult): number {
-  const m = (c.capacity ?? '').match(/\d+/)
-  return m ? parseInt(m[0]) : 4
 }
 
 function applyRefinement(
@@ -101,9 +96,9 @@ function applyRefinement(
       return { refined: filtered, boundaryReached: filtered.length === 0 && results.length > 0 }
     }
     case 'smaller':
-      return { refined: sorted.sort((a, b) => parseCapacity(a) - parseCapacity(b)), boundaryReached: false }
+      return { refined: sorted.sort((a, b) => (a.beds ?? 4) - (b.beds ?? 4)), boundaryReached: false }
     case 'bigger':
-      return { refined: sorted.sort((a, b) => parseCapacity(b) - parseCapacity(a)), boundaryReached: false }
+      return { refined: sorted.sort((a, b) => (b.beds ?? 4) - (a.beds ?? 4)), boundaryReached: false }
     case 'different':
     default:
       return { refined: results, boundaryReached: results.length === 0 }
@@ -1090,7 +1085,7 @@ function rememberMentionedCampers(
     name: camper.name,
     pricePerDay: camper.price_per_day,
     type: camper.type,
-    capacity: camper.capacity,
+    beds: camper.beds,
     reason: reasons[camper.slug],
   }))
   const memory = ensureConversationMemory(state)
@@ -1851,7 +1846,7 @@ export async function POST(req: NextRequest) {
         image_url: camperMap[r.slug].image_url,
         price_per_day: camperMap[r.slug].price_per_day,
         type: camperMap[r.slug].type,
-        capacity: camperMap[r.slug].capacity,
+        beds: camperMap[r.slug].beds,
       }))
 
     // 10. Build availability slots for UI (mode = availability)
@@ -1863,7 +1858,7 @@ export async function POST(req: NextRequest) {
             image_url: c.image_url,
             price_per_day: c.price_per_day,
             type: c.type,
-            capacity: c.capacity,
+            beds: c.beds,
             from: slot.from,
             to: slot.to,
             days: slot.days,

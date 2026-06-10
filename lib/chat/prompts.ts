@@ -415,7 +415,7 @@ requirements:
       parts.push(`- slug: ${c.slug}`)
       parts.push(`  name: ${c.name}`)
       parts.push(`  type: ${c.type ?? '?'}`)
-      parts.push(`  capacity: ${c.capacity ?? '?'}`)
+      parts.push(`  beds: ${c.beds ?? '?'}`)
       parts.push(`  pricePerDay: ${c.price_per_day}`)
       parts.push(`  wildCamping: ${wildTag}`)
       parts.push(`  availableSlots:`)

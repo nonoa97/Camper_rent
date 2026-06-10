@@ -12,31 +12,34 @@ import {
   actionDeleteCamper,
   actionLogout,
 } from './actions'
+import type { CamperGearbox, CamperFuel, CamperType } from '@/lib/types'
+
+const CAMPER_TYPES: CamperType[] = ['Camper van', 'Alkóvos', 'Integrált', 'Félintegrált']
 
 // ── Types ─────────────────────────────────────────────────────
-interface DbType     { id: number; name: string }
-interface DbCapacity { id: number; label: string }
-interface DbFeature  { id: number; name: string }
+interface DbFeature  { id: number; name: string; category_id: number | null; category_name: string | null }
 
 interface AdminCamper {
   id: string
   slug: string
   name: string
   description: string | null
+  overview_title: string | null
+  overview_body: string | null
   image_url: string | null
   images: string[]
   price_per_day: number
   available: boolean
   year: number | null
+  type: CamperType | null
+  gearbox: CamperGearbox | null
+  fuel_type: CamperFuel | null
   wild_camping_suitable: boolean | null
-  type_id: number | null
-  type_name: string | null
-  capacity_id: number | null
-  capacity_label: string | null
+  beds: number | null
   feature_ids: number[]
 }
 
-type DrawerTab = 'alap' | 'képek' | 'árak' | 'beállítások'
+type DrawerTab = 'alap' | 'leírás' | 'felszereltség' | 'képek' | 'árak' | 'beállítások'
 
 interface Season {
   id: 'low' | 'pre' | 'peak'
@@ -83,11 +86,12 @@ const BOOKING_STATUS_META: Record<BookingStatus, { bg: string; color: string; do
 const fmt = (n: number) => n.toLocaleString('hu-HU') + ' Ft'
 
 const BLANK: AdminCamper = {
-  id: '', slug: '', name: 'Új lakóautó', description: null,
+  id: '', slug: '', name: 'Új lakóautó', description: null, overview_title: null, overview_body: null,
   image_url: null, images: [], price_per_day: 25000,
   available: true, year: new Date().getFullYear(),
-  wild_camping_suitable: null, type_id: null, type_name: null,
-  capacity_id: null, capacity_label: null, feature_ids: [],
+  type: null, gearbox: null, fuel_type: null,
+  wild_camping_suitable: null,
+  beds: null, feature_ids: [],
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -136,10 +140,9 @@ async function dbLoadCampers(): Promise<AdminCamper[]> {
     supabase
       .from('campers')
       .select(`
-        id, slug, name, description, image_url,
-        available, year, wild_camping_suitable,
-        type_id, camper_types(name),
-        capacity_id, capacities(label),
+        id, slug, name, description, overview_title, overview_body, image_url,
+        available, year, type, gearbox, fuel_type, wild_camping_suitable,
+        beds,
         camper_features(feature_id),
         camper_images(url, sort_order)
       `)
@@ -154,16 +157,18 @@ async function dbLoadCampers(): Promise<AdminCamper[]> {
     slug: r.slug ?? '',
     name: r.name,
     description: r.description ?? null,
+    overview_title: r.overview_title ?? null,
+    overview_body: r.overview_body ?? null,
     image_url: r.image_url ?? null,
     images: (r.camper_images ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((i: any) => i.url),
     price_per_day: peakPrices[r.id] ?? 0,
     available: r.available ?? true,
     year: r.year ?? null,
+    type: r.type ?? null,
+    gearbox: r.gearbox ?? null,
+    fuel_type: r.fuel_type ?? null,
     wild_camping_suitable: r.wild_camping_suitable ?? null,
-    type_id: r.type_id ?? null,
-    type_name: r.camper_types?.name ?? null,
-    capacity_id: r.capacity_id ?? null,
-    capacity_label: r.capacities?.label ?? null,
+    beds: r.beds ?? null,
     feature_ids: (r.camper_features ?? []).map((f: any) => Number(f.feature_id)),
   }))
 }
@@ -173,7 +178,7 @@ async function dbLoadBookings(): Promise<Booking[]> {
   const [{ data, error }, { data: priceRows }] = await Promise.all([
     supabase
       .from('bookings')
-      .select('id, camper_id, start_date, end_date, status, campers(name, image_url, camper_types(name)), customers(id, name, email, phone)')
+      .select('id, camper_id, start_date, end_date, status, campers(name, image_url, type), customers(id, name, email, phone)')
       .order('start_date', { ascending: false }),
     supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak'),
   ])
@@ -184,7 +189,7 @@ async function dbLoadBookings(): Promise<Booking[]> {
     id: r.id,
     camperId: r.camper_id,
     camperName: r.campers?.name ?? '',
-    camperType: r.campers?.camper_types?.name ?? '',
+    camperType: r.campers?.type ?? '',
     camperImageUrl: r.campers?.image_url ?? '',
     customerId: r.customers?.id ?? undefined,
     guest: r.customers?.name ?? '',
@@ -373,15 +378,12 @@ function DeleteModal({ name, onConfirm, onCancel, loading }: { name: string; onC
 
 // ── EditDrawer ─────────────────────────────────────────────────
 function EditDrawer({
-  camper, isNew, onClose, onSave,
-  types, capacities, features,
+  camper, isNew, onClose, onSave, features,
 }: {
   camper: AdminCamper
   isNew: boolean
   onClose: () => void
   onSave: (c: AdminCamper) => Promise<void>
-  types: DbType[]
-  capacities: DbCapacity[]
   features: DbFeature[]
 }) {
   const [draft, setDraft] = useState<AdminCamper>({ ...camper })
@@ -403,8 +405,8 @@ function EditDrawer({
     finally { setSaving(false) }
   }
 
-  const tabs: DrawerTab[] = ['alap', 'képek', 'árak', 'beállítások']
-  const tabLabels: Record<DrawerTab, string> = { alap: 'Alapadatok', képek: 'Képek', árak: 'Ár', beállítások: 'Beállítások' }
+  const tabs: DrawerTab[] = ['alap', 'leírás', 'felszereltség', 'képek', 'árak', 'beállítások']
+  const tabLabels: Record<DrawerTab, string> = { alap: 'Alapadatok', leírás: 'Leírás', felszereltség: 'Felszereltség', képek: 'Képek', árak: 'Ár', beállítások: 'Beállítások' }
 
   return (
     <>
@@ -439,44 +441,100 @@ function EditDrawer({
               </div>
               <div className="form-row2">
                 <div className="fg"><label className="fl">Típus</label>
-                  <select className="fs" value={draft.type_id ?? ''} onChange={e => {
-                    const id = e.target.value ? Number(e.target.value) : null
-                    const name = types.find(t => t.id === id)?.name ?? null
-                    setDraft(d => ({ ...d, type_id: id, type_name: name }))
-                  }}>
+                  <select className="fs" value={draft.type ?? ''}
+                    onChange={e => set('type', (e.target.value as CamperType) || null)}>
                     <option value="">— válassz —</option>
-                    {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    {CAMPER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                <div className="fg"><label className="fl">Férőhely</label>
-                  <select className="fs" value={draft.capacity_id ?? ''} onChange={e => {
-                    const id = e.target.value ? Number(e.target.value) : null
-                    const label = capacities.find(c => c.id === id)?.label ?? null
-                    setDraft(d => ({ ...d, capacity_id: id, capacity_label: label }))
-                  }}>
-                    <option value="">— válassz —</option>
-                    {capacities.map(c => <option key={c.id} value={c.id}>{c.label} fő</option>)}
-                  </select>
+                <div className="fg"><label className="fl">Ágyak száma</label>
+                  <input className="fi" type="number" min={1} max={12}
+                    value={draft.beds ?? ''}
+                    placeholder="pl. 4"
+                    onChange={e => set('beds', e.target.value ? Number(e.target.value) : null)} />
                 </div>
               </div>
               <div className="fg"><label className="fl">Évjárat</label>
                 <input className="fi" type="number" value={draft.year ?? ''} min={1970} max={2030}
                   onChange={e => set('year', e.target.value ? Number(e.target.value) : null)} />
               </div>
-              <div className="fg"><label className="fl">Leírás</label>
+              <div className="form-row2">
+                <div className="fg"><label className="fl">Váltó</label>
+                  <select className="fs" value={draft.gearbox ?? ''}
+                    onChange={e => set('gearbox', (e.target.value as CamperGearbox) || null)}>
+                    <option value="">— válassz —</option>
+                    <option value="Automata">Automata</option>
+                    <option value="Manuális">Manuális</option>
+                  </select>
+                </div>
+                <div className="fg"><label className="fl">Üzemanyag</label>
+                  <select className="fs" value={draft.fuel_type ?? ''}
+                    onChange={e => set('fuel_type', (e.target.value as CamperFuel) || null)}>
+                    <option value="">— válassz —</option>
+                    <option value="Dízel">Dízel</option>
+                    <option value="Benzin">Benzin</option>
+                    <option value="Elektromos">Elektromos</option>
+                    <option value="Hibrid">Hibrid</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === 'felszereltség' && (() => {
+            const byCategory: Record<string, DbFeature[]> = {}
+            for (const f of features) {
+              const cat = f.category_name ?? 'Egyéb'
+              if (!byCategory[cat]) byCategory[cat] = []
+              byCategory[cat].push(f)
+            }
+            const categories = Object.keys(byCategory)
+            return (
+              <>
+                {categories.length === 0 ? (
+                  <div style={{ color: '#bbb', fontSize: 13, textAlign: 'center', padding: '40px 0' }}>
+                    Még nincsenek felszereltség elemek.<br />
+                    <span style={{ fontSize: 12 }}>Előbb add hozzá a felszereltségeket a rendszerhez.</span>
+                  </div>
+                ) : (
+                  categories.map(cat => (
+                    <div key={cat}>
+                      <div className="section-sep">{cat}</div>
+                      <div className="feat-grid">
+                        {byCategory[cat].map(f => (
+                          <button key={f.id}
+                            className={`feat-chip${draft.feature_ids.includes(f.id) ? ' on' : ''}`}
+                            onClick={() => toggleFeature(f.id)}>
+                            {f.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </>
+            )
+          })()}
+
+          {tab === 'leírás' && (
+            <>
+              <div className="section-sep">Rövid leírás</div>
+              <div className="fg"><label className="fl">Leírás (hero alatt)</label>
                 <textarea className="fta" value={draft.description ?? ''} rows={4}
+                  placeholder="Rövid összefoglaló a lakóautóról..."
                   onChange={e => set('description', e.target.value || null)} />
               </div>
 
-              <div className="section-sep">Felszereltség</div>
-              <div className="feat-grid">
-                {features.map(f => (
-                  <button key={f.id}
-                    className={`feat-chip${draft.feature_ids.includes(f.id) ? ' on' : ''}`}
-                    onClick={() => toggleFeature(f.id)}>
-                    {f.name}
-                  </button>
-                ))}
+              <div className="section-sep">Történet szekció</div>
+              <div className="fg"><label className="fl">Cím</label>
+                <input className="fi" value={draft.overview_title ?? ''}
+                  placeholder="pl. Az utak lakója"
+                  onChange={e => set('overview_title', e.target.value || null)} />
+              </div>
+              <div className="fg"><label className="fl">Szöveg</label>
+                <textarea className="fta" value={draft.overview_body ?? ''} rows={8}
+                  placeholder={'Bekezdések soronként:\n\nElső bekezdés szövege.\nMásodik bekezdés szövege.'}
+                  onChange={e => set('overview_body', e.target.value || null)} />
               </div>
             </>
           )}
@@ -614,7 +672,7 @@ function NewBookingDrawer({ onSave, onClose, bookings }: { onSave: (b: Omit<Book
 
   useEffect(() => {
     Promise.all([
-      supabase.from('campers').select('id, name, image_url, camper_types(name)').eq('available', true).order('name'),
+      supabase.from('campers').select('id, name, image_url, type').eq('available', true).order('name'),
       supabase.from('camper_prices').select('camper_id, season_id, price'),
     ]).then(([{ data: cData }, { data: pData }]) => {
       if (!cData) return
@@ -624,7 +682,7 @@ function NewBookingDrawer({ onSave, onClose, bookings }: { onSave: (b: Omit<Book
         pricesByCamper[p.camper_id][p.season_id] = p.price
       }
       const list: DrawerCamper[] = (cData as any[]).map(c => ({
-        id: c.id, name: c.name, type: c.camper_types?.name ?? '', imageUrl: c.image_url ?? '',
+        id: c.id, name: c.name, type: c.type ?? '', imageUrl: c.image_url ?? '',
         prices: pricesByCamper[c.id] ?? {},
       }))
       setDrawerCampers(list)
@@ -1102,7 +1160,7 @@ function SeasonPricingView() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('campers').select('id, name, image_url, camper_types(name)').eq('available', true).order('name'),
+      supabase.from('campers').select('id, name, image_url, type').eq('available', true).order('name'),
       supabase.from('camper_prices').select('camper_id, season_id, price'),
       supabase.from('long_stay_tiers').select('*').order('sort_order'),
       supabase.from('app_settings').select('value').eq('key', 'long_stay_enabled').single(),
@@ -1114,7 +1172,7 @@ function SeasonPricingView() {
         byId[p.camper_id][p.season_id] = p.price
       }
       setCampervans((cData as any[]).map(c => ({
-        id: c.id, name: c.name, type: (c.camper_types as any)?.name ?? '',
+        id: c.id, name: c.name, type: (c as any).type ?? '',
         imageUrl: c.image_url ?? '', prices: byId[c.id] ?? {},
       })))
       if (tData) setTiers((tData as any[]).map(t => ({ id: t.id, minDays: t.min_days, discountPct: t.discount_pct, active: t.active, sortOrder: t.sort_order })))
@@ -1518,8 +1576,6 @@ function ClientsView() {
 // ── CampervansView ─────────────────────────────────────────────
 function CampervansView() {
   const [campers, setCampers]         = useState<AdminCamper[]>([])
-  const [types, setTypes]             = useState<DbType[]>([])
-  const [capacities, setCapacities]   = useState<DbCapacity[]>([])
   const [features, setFeatures]       = useState<DbFeature[]>([])
   const [upcomingBookings, setUpcomingBookings] = useState<number>(0)
 
@@ -1535,16 +1591,14 @@ function CampervansView() {
   useEffect(() => {
     Promise.all([
       dbLoadCampers(),
-      supabase.from('camper_types').select('id, name').order('sort_order').then(r => r.data ?? []),
-      supabase.from('capacities').select('id, label').order('sort_order').then(r => r.data ?? []),
-      supabase.from('features').select('id, name').order('id').then(r => r.data ?? []),
+      supabase.from('features').select('id, name, category_id, feature_categories(name)').order('sort_order').then(r =>
+        (r.data ?? []).map((f: any) => ({ id: f.id, name: f.name, category_id: f.category_id ?? null, category_name: f.feature_categories?.name ?? null }))
+      ),
       supabase.from('bookings').select('id', { count: 'exact', head: true })
         .gte('start_date', new Date().toISOString().split('T')[0])
         .then(r => r.count ?? 0),
-    ]).then(([cs, ts, caps, feats, bCount]) => {
+    ]).then(([cs, feats, bCount]) => {
       setCampers(cs)
-      setTypes(ts as DbType[])
-      setCapacities(caps as DbCapacity[])
       setFeatures(feats as DbFeature[])
       setUpcomingBookings(bCount as number)
       setLoading(false)
@@ -1555,7 +1609,7 @@ function CampervansView() {
     if (filter === 'active'   && !c.available) return false
     if (filter === 'inactive' &&  c.available) return false
     return c.name.toLowerCase().includes(search.toLowerCase()) ||
-           (c.type_name ?? '').toLowerCase().includes(search.toLowerCase())
+           (c.type ?? '').toLowerCase().includes(search.toLowerCase())
   })
 
   const [togglingId, setTogglingId]   = useState<string | null>(null)
@@ -1577,9 +1631,11 @@ function CampervansView() {
   const handleSave = async (draft: AdminCamper) => {
     const { error } = await actionSaveCamper(draft.id, {
       name: draft.name, slug: draft.slug, description: draft.description,
+      overview_title: draft.overview_title, overview_body: draft.overview_body,
       available: draft.available, year: draft.year,
+      type: draft.type, gearbox: draft.gearbox, fuel_type: draft.fuel_type,
       wild_camping_suitable: draft.wild_camping_suitable,
-      type_id: draft.type_id, capacity_id: draft.capacity_id,
+      beds: draft.beds,
       feature_ids: draft.feature_ids,
     })
     if (error) throw new Error(error)
@@ -1589,9 +1645,11 @@ function CampervansView() {
   const handleCreate = async (draft: AdminCamper) => {
     const { id, error } = await actionCreateCamper({
       name: draft.name, slug: draft.slug, description: draft.description,
+      overview_title: draft.overview_title, overview_body: draft.overview_body,
       available: draft.available, year: draft.year,
+      type: draft.type, gearbox: draft.gearbox, fuel_type: draft.fuel_type,
       wild_camping_suitable: draft.wild_camping_suitable,
-      type_id: draft.type_id, capacity_id: draft.capacity_id,
+      beds: draft.beds,
       feature_ids: draft.feature_ids,
     })
     if (error || !id) throw new Error(error ?? 'Nem sikerült létrehozni')
@@ -1704,8 +1762,8 @@ function CampervansView() {
                         </div>
                       </div>
                     </td>
-                    <td style={{ fontSize: 13, color: '#555' }}>{c.type_name ?? '–'}</td>
-                    <td style={{ fontSize: 13, color: '#555' }}>{c.capacity_label ? `${c.capacity_label} fő` : '–'}</td>
+                    <td style={{ fontSize: 13, color: '#555' }}>{c.type ?? '–'}</td>
+                    <td style={{ fontSize: 13, color: '#555' }}>{c.beds != null ? `${c.beds} fő` : '–'}</td>
                     <td>
                       <StatusBadge
                         available={c.available}
@@ -1744,12 +1802,12 @@ function CampervansView() {
 
       {creating && (
         <EditDrawer camper={BLANK} isNew onClose={() => setCreating(false)}
-          onSave={handleCreate} types={types} capacities={capacities} features={features} />
+          onSave={handleCreate} features={features} />
       )}
 
       {editing && (
         <EditDrawer camper={editing} isNew={false} onClose={() => setEditing(null)}
-          onSave={handleSave} types={types} capacities={capacities} features={features} />
+          onSave={handleSave} features={features} />
       )}
 
       {deleting && (

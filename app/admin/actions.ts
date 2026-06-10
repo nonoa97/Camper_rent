@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import type { CamperGearbox, CamperFuel, CamperType } from '@/lib/types'
 
 // ── Auth guard ─────────────────────────────────────────────────
 async function requireAdmin() {
@@ -43,11 +44,15 @@ export async function actionSaveCamper(
     name: string
     slug: string
     description: string | null
+    overview_title: string | null
+    overview_body: string | null
     available: boolean
     year: number | null
+    type: CamperType | null
+    gearbox: CamperGearbox | null
+    fuel_type: CamperFuel | null
     wild_camping_suitable: boolean | null
-    type_id: number | null
-    capacity_id: number | null
+    beds: number | null
     feature_ids: number[]
   },
 ): Promise<{ error: string | null }> {
@@ -76,11 +81,15 @@ export async function actionCreateCamper(data: {
   name: string
   slug: string
   description: string | null
+  overview_title: string | null
+  overview_body: string | null
   available: boolean
   year: number | null
+  type: CamperType | null
+  gearbox: CamperGearbox | null
+  fuel_type: CamperFuel | null
   wild_camping_suitable: boolean | null
-  type_id: number | null
-  capacity_id: number | null
+  beds: number | null
   feature_ids: number[]
 }): Promise<{ id: string | null; error: string | null }> {
   await requireAdmin()

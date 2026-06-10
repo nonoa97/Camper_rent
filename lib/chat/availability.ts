@@ -7,7 +7,7 @@ export interface CamperResult {
   image_url: string
   price_per_day: number
   type: string | null
-  capacity: string | null
+  beds: number | null
   wildCampingSuitable: boolean | null
   availableSlots: { from: string; to: string; days: number }[]
 }
@@ -66,12 +66,6 @@ export function computeFreeSlots(
   if (finalGap >= minDays) slots.push({ from: cursor, to: windowTo, days: finalGap })
 
   return slots
-}
-
-function parseMaxPassengers(label: string | null): number {
-  if (!label) return 0
-  const nums = label.match(/\d+/g)
-  return nums ? Math.max(...nums.map(Number)) : 0
 }
 
 export function pickSlots(
@@ -135,8 +129,7 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
       .from('campers')
       .select(`
         id, slug, name, image_url,
-        camper_types!type_id(name),
-        capacities!capacity_id(label),
+        type, beds,
         wild_camping_suitable
       `)
       .eq('available', true)
@@ -152,16 +145,15 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
       name: r.name,
       image_url: r.image_url,
       price_per_day: peakPrices[r.id] ?? 0,
-      type: r.camper_types?.name ?? null,
-      capacity: r.capacities?.label ?? null,
+      type: r.type ?? null,
+      beds: (r.beds ?? null) as number | null,
       wildCampingSuitable: r.wild_camping_suitable ?? null,
-      maxPassengers: parseMaxPassengers(r.capacities?.label ?? null),
     }))
     .sort((a, b) => a.price_per_day - b.price_per_day)
 
   // Filter by passengers
   const filtered = campers.filter(c => {
-    if (state.passengers && c.maxPassengers > 0 && c.maxPassengers < state.passengers) return false
+    if (state.passengers && (c.beds ?? 0) > 0 && (c.beds ?? 0) < state.passengers) return false
     // Only filter by wild camping if field is explicitly set on the camper
     if (state.campingType === 'wild' && c.wildCampingSuitable === false) return false
     return true
@@ -209,7 +201,7 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
           image_url: c.image_url,
           price_per_day: c.price_per_day,
           type: c.type,
-          capacity: c.capacity,
+          beds: c.beds,
           wildCampingSuitable: c.wildCampingSuitable,
           availableSlots: [{
             from: state.startDate!,
@@ -236,7 +228,7 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
           image_url: c.image_url,
           price_per_day: c.price_per_day,
           type: c.type,
-          capacity: c.capacity,
+          beds: c.beds,
           wildCampingSuitable: c.wildCampingSuitable,
           availableSlots: picked,
         })
@@ -291,8 +283,7 @@ export async function getSpecificCamperAvailability(
       .from('campers')
       .select(`
         id, slug, name, image_url,
-        camper_types!type_id(name),
-        capacities!capacity_id(label),
+        type, beds,
         wild_camping_suitable
       `)
       .eq('slug', slug)
@@ -309,8 +300,8 @@ export async function getSpecificCamperAvailability(
     name: r.name as string,
     image_url: r.image_url as string,
     price_per_day: (peakPrices[r.id] ?? 0) as number,
-    type: (r.camper_types?.name ?? null) as string | null,
-    capacity: (r.capacities?.label ?? null) as string | null,
+    type: (r.type ?? null) as string | null,
+    beds: (r.beds ?? null) as number | null,
     wildCampingSuitable: (r.wild_camping_suitable ?? null) as boolean | null,
   }
 
@@ -364,7 +355,7 @@ export async function getSpecificCamperAvailability(
     image_url: camper.image_url,
     price_per_day: camper.price_per_day,
     type: camper.type,
-    capacity: camper.capacity,
+    beds: camper.beds,
     wildCampingSuitable: camper.wildCampingSuitable,
     availableSlots: slots,
   }]
@@ -387,8 +378,7 @@ export async function findEarliestAvailableCamper(
       .from('campers')
       .select(`
         id, slug, name, image_url,
-        camper_types!type_id(name),
-        capacities!capacity_id(label),
+        type, beds,
         wild_camping_suitable
       `)
       .eq('available', true)
@@ -404,15 +394,14 @@ export async function findEarliestAvailableCamper(
       name: r.name as string,
       image_url: r.image_url as string,
       price_per_day: (peakPrices[r.id] ?? 0) as number,
-      type: (r.camper_types?.name ?? null) as string | null,
-      capacity: (r.capacities?.label ?? null) as string | null,
+      type: (r.type ?? null) as string | null,
+      beds: (r.beds ?? null) as number | null,
       wildCampingSuitable: (r.wild_camping_suitable ?? null) as boolean | null,
-      maxPassengers: parseMaxPassengers(r.capacities?.label ?? null),
     }))
     .sort((a, b) => a.price_per_day - b.price_per_day)
 
   const filtered = campers.filter(c => {
-    if (state.passengers && c.maxPassengers > 0 && c.maxPassengers < state.passengers) return false
+    if (state.passengers && (c.beds ?? 0) > 0 && (c.beds ?? 0) < state.passengers) return false
     if (state.campingType === 'wild' && c.wildCampingSuitable === false) return false
     return true
   })
@@ -466,7 +455,7 @@ export async function findEarliestAvailableCamper(
       image_url: c.image_url,
       price_per_day: c.price_per_day,
       type: c.type,
-      capacity: c.capacity,
+      beds: c.beds,
       wildCampingSuitable: c.wildCampingSuitable,
       availableSlots: [slot],
     })
