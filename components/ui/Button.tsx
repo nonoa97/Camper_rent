@@ -5,10 +5,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export default function Button({ variant = 'primary', className = '', children, ...props }: ButtonProps) {
-  const base = 'px-6 py-3 rounded-[4px] text-sm font-semibold transition-all duration-200 cursor-pointer'
+  const base = 'px-6 py-3 rounded-[var(--radius-lg)] text-sm font-semibold transition-all duration-200 cursor-pointer'
   const variants = {
-    primary: 'bg-white text-[#111111] hover:translate-y-[-2px] hover:shadow-md hover:bg-[#a8d8a8]',
-    outline: 'border border-[#dddddd] text-[#111111] hover:border-[#1a3a2a] hover:text-[#1a3a2a]',
+    primary: 'bg-white text-[#111111] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)] hover:border-[var(--color-primary-light)] hover:-translate-y-0.5',
+    outline: 'border border-[var(--color-border)] text-[#111111] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]',
     dark: 'bg-[#111111] text-white hover:bg-[#333333]',
   }
   return (

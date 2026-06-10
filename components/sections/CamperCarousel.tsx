@@ -21,17 +21,18 @@ export default function CamperCarousel() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from('campers')
-        .select('id, name, slug, price_per_day, image_url, capacities(label)')
-        .eq('available', true)
-        .order('created_at')
+      const [{ data }, { data: priceRows }] = await Promise.all([
+        supabase.from('campers').select('id, name, slug, image_url, capacities(label)').eq('available', true).order('created_at'),
+        supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak'),
+      ])
+      const peakPrices: Record<string, number> = {}
+      for (const p of (priceRows ?? []) as any[]) peakPrices[p.camper_id] = p.price
       if (data) {
         setCampers(data.map((c: any) => ({
           id: c.id,
           name: c.name,
           slug: c.slug,
-          price_per_day: c.price_per_day,
+          price_per_day: peakPrices[c.id] ?? 0,
           image_url: c.image_url,
           capacity: c.capacities?.label ?? '',
         })))
@@ -62,7 +63,7 @@ export default function CamperCarousel() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1" {...swipe}>
             {visible.map((camper, i) => (
               <Link key={camper.id} href={`/katalogus/${camper.slug}`} className={`group cursor-pointer block ${i > 0 ? 'hidden md:block' : ''}`}>
-                <div className="relative h-56 rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">
+                <div className="relative h-[200px] rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">
                   {camper.image_url ? (
                     <Image src={camper.image_url} alt={camper.name} fill className="object-cover transition-transform duration-400 group-hover:scale-105" />
                   ) : (

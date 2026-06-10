@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import Footer from '@/components/layout/Footer'
+import PublicChrome from '@/components/layout/PublicChrome'
 
 export const metadata: Metadata = {
   title: 'Camper Rent',
@@ -12,7 +12,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="hu" className="antialiased">
       <body className="min-h-screen flex flex-col w-full" style={{ overflowX: 'clip' }}>
         <main className="flex-1">{children}</main>
-        <Footer />
+        <PublicChrome />
       </body>
     </html>
   )

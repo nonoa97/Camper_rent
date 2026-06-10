@@ -1,21 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface BookingRange {
   start: Date
   end: Date
 }
-
-// Demo adatok — later replace with Supabase fetch
-const DEMO_BOOKINGS: BookingRange[] = [
-  { start: new Date(2026, 5, 12), end: new Date(2026, 5, 19) },
-  { start: new Date(2026, 5, 26), end: new Date(2026, 5, 29) },
-  { start: new Date(2026, 6, 7),  end: new Date(2026, 6, 16) },
-  { start: new Date(2026, 6, 21), end: new Date(2026, 6, 27) },
-  { start: new Date(2026, 7, 4),  end: new Date(2026, 7, 11) },
-  { start: new Date(2026, 7, 18), end: new Date(2026, 7, 25) },
-]
 
 const MONTHS = [
   'Január','Február','Március','Április','Május','Június',
@@ -111,9 +102,30 @@ function MonthGrid({ year, month, bookings }: { year: number; month: number; boo
   )
 }
 
-export default function AvailabilityCalendar() {
+export default function AvailabilityCalendar({ camperSlug }: { camperSlug: string }) {
   const today = new Date()
   const [offset, setOffset] = useState(0)
+  const [bookings, setBookings] = useState<BookingRange[]>([])
+
+  useEffect(() => {
+    async function fetchBookings() {
+      const { data } = await supabase
+        .from('bookings')
+        .select('start_date, end_date, campers!inner(slug)')
+        .eq('campers.slug', camperSlug)
+        .eq('status', 'confirmed')
+        .gte('end_date', today.toISOString().split('T')[0])
+
+      if (data) {
+        setBookings(data.map((b: any) => ({
+          start: new Date(b.start_date),
+          end:   new Date(b.end_date),
+        })))
+      }
+    }
+    fetchBookings()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camperSlug])
 
   const m1 = new Date(today.getFullYear(), today.getMonth() + offset, 1)
   const m2 = new Date(today.getFullYear(), today.getMonth() + offset + 1, 1)
@@ -140,9 +152,9 @@ export default function AvailabilityCalendar() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-        <MonthGrid year={m1.getFullYear()} month={m1.getMonth()} bookings={DEMO_BOOKINGS} />
+        <MonthGrid year={m1.getFullYear()} month={m1.getMonth()} bookings={bookings} />
         <div className="hidden md:block">
-          <MonthGrid year={m2.getFullYear()} month={m2.getMonth()} bookings={DEMO_BOOKINGS} />
+          <MonthGrid year={m2.getFullYear()} month={m2.getMonth()} bookings={bookings} />
         </div>
       </div>
 

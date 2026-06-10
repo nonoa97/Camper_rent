@@ -139,20 +139,25 @@ export default function KatalogusPage() {
     async function loadCampers() {
       let query = supabase
         .from('campers')
-        .select('id, name, slug, price_per_day, image_url, capacity_id, type_id, year, gearbox, fuel_type, capacities(label), camper_features(features(name))')
+        .select('id, name, slug, image_url, capacity_id, type_id, year, gearbox, fuel_type, capacities(label), camper_features(features(name))')
         .eq('available', true)
-        .order('price_per_day')
+        .order('name')
 
       if (capacityId) query = query.eq('capacity_id', capacityId)
       if (typeId) query = query.eq('type_id', typeId)
 
-      const { data } = await query
+      const [{ data }, { data: priceRows }] = await Promise.all([
+        query,
+        supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak'),
+      ])
+      const peakPrices: Record<string, number> = {}
+      for (const p of (priceRows ?? []) as any[]) peakPrices[p.camper_id] = p.price
       if (data) {
         setCampers(data.map((c: any) => ({
           id: c.id,
           name: c.name,
           slug: c.slug,
-          price_per_day: c.price_per_day,
+          price_per_day: peakPrices[c.id] ?? 0,
           image_url: c.image_url,
           capacity_id: c.capacity_id,
           type_id: c.type_id,

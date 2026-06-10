@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ConversationState } from '@/lib/chat/state'
+import { ConversationState, FlowState, SessionMemory } from '@/lib/chat/state'
 
 interface Recommendation {
   slug: string
@@ -68,6 +68,11 @@ const MarkdownContent = ({ content }: { content: string }) => (
         <a href={href} className="underline font-medium" style={{ color: '#1a3a2a' }}>
           {children}
         </a>
+      ),
+      strong: ({ children }) => (
+        <strong className="font-semibold underline decoration-[#1a3a2a]/50 underline-offset-2">
+          {children}
+        </strong>
       ),
       p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
     }}
@@ -152,6 +157,8 @@ export default function ChatWidget() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [chatState, setChatState] = useState<ConversationState>({})
+  const [flowState, setFlowState] = useState<FlowState>({})
+  const [sessionMemory, setSessionMemory] = useState<SessionMemory>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -172,11 +179,19 @@ export default function ChatWidget() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, state: chatState }),
+        body: JSON.stringify({
+          message: text,
+          history,
+          state: chatState,
+          flowState,
+          sessionMemory,
+        }),
       })
       const data = await res.json()
 
       if (data.updatedState) setChatState(data.updatedState)
+      if (data.updatedFlowState) setFlowState(data.updatedFlowState)
+      if (data.updatedSessionMemory) setSessionMemory(data.updatedSessionMemory)
 
       setMessages(prev => [
         ...prev,

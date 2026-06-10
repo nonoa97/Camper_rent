@@ -57,7 +57,7 @@ interface CamperDetail {
   overview_body: string | null
   price_per_day: number
   image_url: string | null
-  images: string[] | null
+  images: string[]
   available: boolean
   capacity: string
   type: string
@@ -86,19 +86,27 @@ export default function CamperDetailPage() {
         .from('campers')
         .select(`
           id, name, slug, description, overview_title, overview_body,
-          price_per_day, image_url, images, available,
+          image_url, available,
           year, gearbox, fuel_type,
           capacities(label),
           camper_types:type_id(name),
           comfort_levels:comfort_id(name),
           camper_features(
             features(name, icon, emoji, highlight_title, highlight_desc)
-          )
+          ),
+          camper_images(url, sort_order)
         `)
         .eq('slug', slug)
         .single()
 
       if (c) {
+        const { data: priceRow } = await supabase
+          .from('camper_prices')
+          .select('price')
+          .eq('camper_id', c.id)
+          .eq('season_id', 'peak')
+          .single()
+
         const features: CamperFeature[] = (c.camper_features ?? [])
           .map((cf: any) => ({
             name: cf.features?.name ?? '',
@@ -113,9 +121,9 @@ export default function CamperDetailPage() {
           description: c.description,
           overview_title: c.overview_title,
           overview_body: c.overview_body,
-          price_per_day: c.price_per_day,
+          price_per_day: (priceRow as any)?.price ?? 0,
           image_url: c.image_url,
-          images: c.images,
+          images: (c.camper_images ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((i: any) => i.url),
           available: c.available,
           year: c.year ?? null,
           gearbox: c.gearbox ?? null,
@@ -390,7 +398,7 @@ export default function CamperDetailPage() {
 
       {/* ── NAPTÁR ────────────────────────────────────────────────── */}
       <div className="max-w-[1300px] mx-auto px-4 md:px-10 mb-8 md:mb-16 pt-4 md:pt-10">
-        <AvailabilityCalendar />
+        <AvailabilityCalendar camperSlug={camper.slug} />
       </div>
 
       {/* ── MŰSZAKI ADATOK ────────────────────────────────────────── */}

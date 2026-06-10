@@ -28,8 +28,8 @@ function FilterGroup({ label, options, value, onChange }: {
           onClick={() => onChange(opt === 'Összes' ? '' : opt)}
           className={`px-4 py-1.5 rounded-full text-sm border transition-all ${
             (opt === 'Összes' && value === '') || opt === value
-              ? 'bg-[#1a3a2a] text-white border-[#1a3a2a]'
-              : 'border-[#ddd] text-[#333] hover:border-[#1a3a2a]'
+              ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+              : 'border-[var(--color-border)] text-[#333] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface)]'
           }`}
         >
           {opt}

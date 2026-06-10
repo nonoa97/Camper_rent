@@ -4,6 +4,45 @@
   color-scheme: light;
   --background: #ffffff;
   --foreground: #111111;
+
+  /* Brand */
+  --color-primary:       #1a3a2a;
+  --color-primary-mid:   #2d4a2d;
+  --color-primary-light: #a8d8a8;
+
+  /* Neutrals */
+  --color-text-muted:    #666666;
+  --color-text-faint:    #999999;
+
+  /* Surfaces */
+  --color-surface:       #f5f5f5;
+  --color-surface-warm:  #f4f4f2;
+  --color-surface-paper: #efefed;
+
+  /* Borders */
+  --color-border:        #dddddd;
+  --color-border-warm:   #ece9e4;
+  --color-border-strong: #d5d3d0;
+
+  /* Radius */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   10px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-base:   200ms ease;
+  --transition-slow:   300ms ease;
+  --transition-slower: 500ms ease;
 }
 
 @theme inline {
@@ -17,7 +56,7 @@
   --color-primary-light: #a8d8a8;
   --color-text-dark: #111111;
   --color-text-muted: #666666;
-  --color-border: #eeeeee;
+  --color-border: #dddddd;
 }
 
 html,

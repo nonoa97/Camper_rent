@@ -31,7 +31,7 @@ export default function CtaBanner({
       <div className="absolute inset-0 bg-black/45" />
       <div className="relative z-10 px-6">
         {eyebrow && (
-          <span className="block text-[10px] tracking-[0.25em] uppercase text-white/60 font-semibold mb-4">
+          <span className="block text-[10px] font-semibold tracking-[0.22em] uppercase text-white/60 mb-4">
             {eyebrow}
           </span>
         )}

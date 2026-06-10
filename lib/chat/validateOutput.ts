@@ -22,7 +22,7 @@ export function validateGptOutput(
     return FALLBACK_OUTPUT
   }
 
-  const reply = typeof parsed.reply === 'string' ? parsed.reply.trim() : ''
+  let reply = typeof parsed.reply === 'string' ? parsed.reply.trim() : ''
 
   let recommendations: { slug: string; reason: string }[] = []
   if (Array.isArray(parsed.recommendations) && mode !== 'ask_next_question') {
@@ -33,7 +33,10 @@ export function validateGptOutput(
           (allowedSlugs.size === 0 || allowedSlugs.has((r as any).slug)),
       )
       .slice(0, 2)
-      .map(r => ({ slug: r.slug, reason: typeof r.reason === 'string' ? r.reason : '' }))
+      .map(r => ({
+        slug: r.slug,
+        reason: typeof r.reason === 'string' ? r.reason.trim().slice(0, 200) : '',
+      }))
   }
 
   const links: { label: string; href: string }[] = Array.isArray(parsed.links)
@@ -46,6 +49,7 @@ export function validateGptOutput(
     : []
 
   if (!reply && recommendations.length === 0) return FALLBACK_OUTPUT
+  if (!reply && recommendations.length > 0) reply = 'Találtam néhány jó lehetőséget.'
 
   return { reply, recommendations, links }
 }

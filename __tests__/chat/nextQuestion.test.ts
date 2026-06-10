@@ -17,6 +17,16 @@ describe('Flow 1 – empty state starts checklist', () => {
     const q = getNextMissingQuestion({ intent: 'recommendation' })
     expect(q?.question.length).toBeGreaterThan(5)
   })
+
+  it('uses singular wording before passenger count is known', () => {
+    const q = getNextMissingQuestion({ intent: 'recommendation' })
+    expect(q?.question).toBe('Mikor mennél?')
+  })
+
+  it('uses plural wording when passenger count already indicates a group', () => {
+    const q = getNextMissingQuestion({ intent: 'recommendation', passengers: 2 })
+    expect(q?.question).toBe('Mikor szeretnétek menni?')
+  })
 })
 
 // ────────────────────────────────────────────────────────────────
@@ -28,12 +38,14 @@ describe('Flow 2 – durationDays extraction advances checklist', () => {
   it('asks durationDays when month is known but duration missing', () => {
     const q = getNextMissingQuestion(stateWithMonth)
     expect(q?.field).toBe('durationDays')
+    expect(q?.question).toBe('Hány napra tervezed?')
   })
 
   it('advances to passengers after durationDays=4 is merged in', () => {
     const merged = mergeState(stateWithMonth, { durationDays: 4 })
     const q = getNextMissingQuestion(merged)
     expect(q?.field).toBe('passengers')
+    expect(q?.question).toBe('Hány fővel utaznál?')
     expect(q?.field).not.toBe('durationDays') // regression guard
   })
 
@@ -57,6 +69,19 @@ describe('Flow 4 – ask_next_question mode blocks Supabase', () => {
     const q = getNextMissingQuestion({ month: '2026-07', durationDays: 4 })
     expect(q).not.toBeNull()
     expect(q?.field).toBe('passengers')
+    expect(q?.question).toBe('Hány fővel utaznál?')
+  })
+
+  it('uses plural campingType wording after passengers > 1 is known', () => {
+    const q = getNextMissingQuestion({ month: '2026-07', durationDays: 4, passengers: 2 })
+    expect(q?.field).toBe('campingType')
+    expect(q?.question).toBe('Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?')
+  })
+
+  it('uses singular campingType wording for solo trips', () => {
+    const q = getNextMissingQuestion({ month: '2026-07', durationDays: 4, passengers: 1 })
+    expect(q?.field).toBe('campingType')
+    expect(q?.question).toBe('Inkább vadkempingeznél, vagy kempinghelyen állnál meg?')
   })
 
   it('checklist is complete when all required fields are set', () => {
@@ -71,9 +96,10 @@ describe('Flow 4 – ask_next_question mode blocks Supabase', () => {
     expect(q).toBeNull() // → recommend/availability mode → Supabase allowed
   })
 
-  it('earliestAvailable skips month + duration questions', () => {
+  it('earliestAvailable skips month but still asks duration', () => {
     const q = getNextMissingQuestion({ earliestAvailable: true })
-    expect(q?.field).toBe('passengers') // not month, not durationDays
+    expect(q?.field).toBe('durationDays')
+    expect(q?.question).toBe('Hány napra tervezed?')
   })
 })
 
@@ -99,5 +125,48 @@ describe('mergeState', () => {
       { alreadyRecommendedSlugs: ['hobby-t75hf', 'vw-crafter'] },
     )
     expect(state.alreadyRecommendedSlugs).toEqual(['hobby-t75hf', 'vw-crafter'])
+  })
+})
+describe('Regression - campingType is complete when camping_site is set', () => {
+  it('does not ask campingType again when campingType is camping_site', () => {
+    const q = getNextMissingQuestion({
+      month: '2026-08',
+      durationDays: 8,
+      passengers: 5,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    })
+
+    expect(q).toBeNull()
+  })
+})
+
+describe('Flexible trip criteria', () => {
+  it('treats up to 3 alternative months as timing resolved', () => {
+    const q = getNextMissingQuestion({
+      intent: 'recommendation',
+      flexibleCriteria: { months: ['2026-07', '2026-08'] },
+    })
+    expect(q?.field).toBe('durationDays')
+  })
+
+  it('treats flexible duration and passenger alternatives as resolved', () => {
+    const q = getNextMissingQuestion({
+      intent: 'recommendation',
+      month: '2026-07',
+      flexibleCriteria: {
+        durationDays: { min: 5, max: 7, preferred: 7 },
+        passengers: { alternatives: [2, 4], max: 4 },
+      },
+    })
+    expect(q?.field).toBe('campingType')
+  })
+
+  it('asks for clarification when alternative months would exceed branch limit', () => {
+    const q = getNextMissingQuestion({
+      intent: 'recommendation',
+      flexibleCriteria: { months: ['2026-07', '2026-08', '2026-09', '2026-10'] },
+    })
+    expect(q?.field).toBe('month')
   })
 })

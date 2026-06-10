@@ -20,15 +20,15 @@ export default function CamperGrid({ campers }: { campers: Camper[] }) {
         const capacity = (camper as any).capacities?.label
         const type = (camper as any).camper_types?.name
         const comfort = (camper as any).comfort_levels?.name
-        const price = camper.price_per_day
-          ? `${camper.price_per_day.toLocaleString('hu-HU')} Ft`
+        const price = (camper as any).price_per_day
+          ? `${(camper as any).price_per_day.toLocaleString('hu-HU')} Ft`
           : null
 
         return (
           <Link key={camper.id} href={`/katalogus/${(camper as any).slug ?? camper.id}`}>
           <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
             {camper.image_url && (
-              <div className="relative h-56 w-full">
+              <div className="relative h-[200px] w-full">
                 <Image src={camper.image_url} alt={camper.name} fill className="object-cover" />
               </div>
             )}
@@ -43,7 +43,7 @@ export default function CamperGrid({ campers }: { campers: Camper[] }) {
                 <p className="text-[#666] text-sm mb-4 leading-relaxed">{camper.description}</p>
               )}
               <div className="flex items-center justify-between mt-4">
-                {price && <span className="text-[#1a3a2a] font-bold text-lg">{price} / nap</span>}
+                {price && <span className="text-[var(--color-primary)] text-[20px] font-extrabold">{price} / nap</span>}
                 <div className="flex gap-2 ml-auto">
                   {camper.detail_url && (
                     <Button variant="outline" className="text-sm px-4 py-2">Részletek</Button>

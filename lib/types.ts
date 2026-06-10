@@ -35,7 +35,6 @@ export interface Camper {
   comfort_level?: ComfortLevel
   features?: Feature[]
   description?: string
-  price_per_day?: number
   image_url?: string
   images?: string[]
   available?: boolean

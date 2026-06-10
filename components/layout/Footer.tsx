@@ -64,7 +64,7 @@ export default function Footer() {
 
         {/* Logo + leírás – mobilon középre, desktopon bal */}
         <div className="text-center md:text-left mb-8 md:mb-0 md:hidden">
-          <div className="text-lg font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
+          <div className="text-[17px] font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
           <div className="text-[10px] tracking-[0.32em] text-[#777] uppercase mb-3">Europe</div>
           <p className="text-[#555] text-xs leading-relaxed mx-auto max-w-[220px]">
             Prémium lakóautó bérlés. Fedezd fel Európát szabadon, a saját tempódban.
@@ -76,7 +76,7 @@ export default function Footer() {
 
           {/* Desktop-only logo col */}
           <div className="hidden md:block">
-            <div className="text-lg font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
+            <div className="text-[17px] font-black tracking-[0.16em] uppercase text-[#111] mb-0.5">VanLife</div>
             <div className="text-[10px] tracking-[0.32em] text-[#777] uppercase mb-3">Europe</div>
             <p className="text-[#555] text-xs leading-relaxed max-w-[190px]">
               Prémium lakóautó bérlés. Fedezd fel Európát szabadon, a saját tempódban.
