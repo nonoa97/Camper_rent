@@ -25,7 +25,11 @@ import { loadCatalogSummary, CatalogEntry } from '@/lib/chat/catalog'
 import { validateGptOutput, FALLBACK_OUTPUT } from '@/lib/chat/validateOutput'
 import { SYSTEM_PROMPT, buildContextBlock, GptContext, SearchType } from '@/lib/chat/prompts'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+let _openai: OpenAI | null = null
+const getOpenAI = () => {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  return _openai
+}
 
 type HistoryItem = { role: 'user' | 'assistant'; content: string }
 
@@ -1776,7 +1780,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Call GPT
     const contextBlock = buildContextBlock(ctx)
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextBlock}` },
