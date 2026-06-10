@@ -1,7 +1,11 @@
 import OpenAI from 'openai'
 import { ConversationState, ChecklistField, ReferenceTarget, extractStateFromMessage } from './state'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+let _openai: OpenAI | null = null
+const getOpenAI = () => {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  return _openai
+}
 
 type StateUpdate = Partial<ConversationState>
 
@@ -479,7 +483,7 @@ async function extractWithGPT(
   history: { role: string; content: string }[],
   currentState: ConversationState,
 ): Promise<StateUpdate> {
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: buildExtractionPrompt(currentState) },
