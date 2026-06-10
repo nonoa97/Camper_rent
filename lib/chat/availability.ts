@@ -140,22 +140,24 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
         wild_camping_suitable
       `)
       .eq('available', true)
-      .order('price_per_day'),
+      .order('name'),
     loadPeakPrices(),
   ])
 
   if (error || !rows) return []
 
-  const campers = (rows as any[]).map(r => ({
-    slug: r.slug,
-    name: r.name,
-    image_url: r.image_url,
-    price_per_day: peakPrices[r.id] ?? 0,
-    type: r.camper_types?.name ?? null,
-    capacity: r.capacities?.label ?? null,
-    wildCampingSuitable: r.wild_camping_suitable ?? null,
-    maxPassengers: parseMaxPassengers(r.capacities?.label ?? null),
-  }))
+  const campers = (rows as any[])
+    .map(r => ({
+      slug: r.slug,
+      name: r.name,
+      image_url: r.image_url,
+      price_per_day: peakPrices[r.id] ?? 0,
+      type: r.camper_types?.name ?? null,
+      capacity: r.capacities?.label ?? null,
+      wildCampingSuitable: r.wild_camping_suitable ?? null,
+      maxPassengers: parseMaxPassengers(r.capacities?.label ?? null),
+    }))
+    .sort((a, b) => a.price_per_day - b.price_per_day)
 
   // Filter by passengers
   const filtered = campers.filter(c => {
@@ -390,22 +392,24 @@ export async function findEarliestAvailableCamper(
         wild_camping_suitable
       `)
       .eq('available', true)
-      .order('price_per_day'),
+      .order('name'),
     loadPeakPrices(),
   ])
 
   if (error || !rows) return []
 
-  const campers = (rows as any[]).map(r => ({
-    slug: r.slug as string,
-    name: r.name as string,
-    image_url: r.image_url as string,
-    price_per_day: (peakPrices[r.id] ?? 0) as number,
-    type: (r.camper_types?.name ?? null) as string | null,
-    capacity: (r.capacities?.label ?? null) as string | null,
-    wildCampingSuitable: (r.wild_camping_suitable ?? null) as boolean | null,
-    maxPassengers: parseMaxPassengers(r.capacities?.label ?? null),
-  }))
+  const campers = (rows as any[])
+    .map(r => ({
+      slug: r.slug as string,
+      name: r.name as string,
+      image_url: r.image_url as string,
+      price_per_day: (peakPrices[r.id] ?? 0) as number,
+      type: (r.camper_types?.name ?? null) as string | null,
+      capacity: (r.capacities?.label ?? null) as string | null,
+      wildCampingSuitable: (r.wild_camping_suitable ?? null) as boolean | null,
+      maxPassengers: parseMaxPassengers(r.capacities?.label ?? null),
+    }))
+    .sort((a, b) => a.price_per_day - b.price_per_day)
 
   const filtered = campers.filter(c => {
     if (state.passengers && c.maxPassengers > 0 && c.maxPassengers < state.passengers) return false
