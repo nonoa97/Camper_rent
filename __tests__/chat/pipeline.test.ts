@@ -20,6 +20,11 @@ vi.mock('@/lib/chat/availability', () => ({
   getSpecificCamperAvailability: (...args: any[]) => mockGetSpecific(...args),
 }))
 
+const mockEvaluateCampers = vi.fn()
+vi.mock('@/lib/chat/evaluation', () => ({
+  evaluateCampers: (...args: any[]) => mockEvaluateCampers(...args),
+}))
+
 const mockLoadFaq = vi.fn()
 vi.mock('@/lib/chat/faq', () => ({
   loadFaqItems: (...args: any[]) => mockLoadFaq(...args),
@@ -69,6 +74,7 @@ beforeEach(() => {
   mockGptCreate.mockResolvedValue(defaultGptResponse)
   mockLoadExtras.mockResolvedValue([])
   mockLoadCatalog.mockResolvedValue([])
+  mockEvaluateCampers.mockResolvedValue(undefined)
 })
 
 // Import route handler after mocks
@@ -76,6 +82,7 @@ import { POST } from '@/app/api/chat/route'
 import { NextRequest } from 'next/server'
 import { SYSTEM_PROMPT } from '@/lib/chat/prompts'
 import { getNextMissingQuestion } from '@/lib/chat/nextQuestion'
+import { createMemoryEvent, MAX_MEMORY_EVENTS } from '@/lib/chat/recommendationMemory'
 
 // ──────────────────────────────────────────────────────────────
 // Helpers
@@ -102,7 +109,6 @@ const mockCamper: CamperResult = {
   price_per_day: 35000,
   type: 'Alkóvos',
   beds: 6,
-  wildCampingSuitable: true,
   availableSlots: [{ from: '2026-08-01', to: '2026-08-07', days: 7 }],
 }
 
@@ -132,6 +138,30 @@ describe('Flow 1 – "Segíts választani" starts checklist', () => {
     expect(mockSearchCampers).not.toHaveBeenCalled()
     expect(mockFindEarliest).not.toHaveBeenCalled()
     expect(mockGetSpecific).not.toHaveBeenCalled()
+  })
+
+  it('treats flexible timing without explicit intent as checklist context, not catalog browsing', async () => {
+    mockExtract.mockResolvedValue({
+      flexibleCriteria: {
+        preferredStartWindows: [{
+          startDate: '2026-09-21',
+          endDate: '2026-09-30',
+          precision: 'month_part',
+        }],
+      },
+    })
+
+    const res = await POST(makeRequest('szeptember végén mennénk'))
+    const body = await res.json()
+
+    expect(body.updatedState?.flexibleCriteria?.preferredStartWindows).toEqual([
+      expect.objectContaining({
+        startDate: '2026-09-21',
+        endDate: '2026-09-30',
+      }),
+    ])
+    expect(mockLoadCatalog).not.toHaveBeenCalled()
+    expect(mockSearchCampers).not.toHaveBeenCalled()
   })
 })
 
@@ -201,6 +231,203 @@ describe('Flexible criteria branching', () => {
 
     expect(mockSearchCampers).not.toHaveBeenCalled()
     expect(body.updatedState?.lastAskedField).toBe('month')
+  })
+})
+
+describe('Camper Evaluation Engine context', () => {
+  const engineCamper = {
+    camperId: 'engine-id',
+    camperSlug: 'engine-top',
+    camperName: 'Engine Top Camper',
+    status: 'eligible',
+    score: 42,
+    hardFailures: [],
+    pricing: { status: 'priced', pricePerDay: 42000, total: 294000 },
+    scoreBreakdown: [{ key: 'capacity', label: 'Megfelel a létszámnak', points: 20 }],
+    availableSlots: [{ from: '2026-07-01', to: '2026-07-08', days: 7 }],
+    imageUrl: 'https://example.com/engine.jpg',
+    type: 'Campervan',
+    beds: 2,
+  }
+
+  function mockEngineResult(topRecommendations = [engineCamper]) {
+    mockEvaluateCampers.mockResolvedValue({
+      evaluations: topRecommendations,
+      topRecommendations,
+      branchSummary: [],
+      branches: [],
+      pricingSummary: { pricedCount: topRecommendations.length, missingPriceCount: 0 },
+      discountOpportunities: [],
+      explanationContext: { hardConstraintKeys: [], softScoringKeys: ['capacity'] },
+    })
+  }
+
+  it('passes backend selected recommendations to the renderer context in recommendation mode', async () => {
+    mockExtract.mockResolvedValue({})
+    mockSearchCampers.mockResolvedValue([mockCamper])
+    mockEngineResult()
+
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve(defaultGptResponse)
+    })
+
+    await POST(makeRequest('mutasd az ajánlást', {
+      intent: 'recommendation',
+      month: '2026-07',
+      durationDays: 7,
+      passengers: 2,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    }))
+
+    expect(mockEvaluateCampers).toHaveBeenCalled()
+    expect(capturedSystemPrompt).toContain('BACKEND SELECTED RECOMMENDATIONS')
+    expect(capturedSystemPrompt).toContain('backendSelectedRecommendations:')
+    expect(capturedSystemPrompt).toContain('engine-top')
+    expect(capturedSystemPrompt).not.toContain('topEvaluatedCandidates')
+    expect(capturedSystemPrompt).not.toContain('AVAILABLE CAMPERS')
+  })
+
+  it('uses engine topRecommendations for allowed slugs in recommend mode', async () => {
+    mockExtract.mockResolvedValue({})
+    mockSearchCampers.mockResolvedValue([mockCamper])
+    mockEngineResult()
+
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ reply: 'Ajánlom.', recommendations: [{ slug: 'engine-top', reason: 'Backend-selected.' }], links: [] }) } }],
+      })
+    })
+
+    const res = await POST(makeRequest('mutasd az ajánlást', {
+      intent: 'recommendation',
+      month: '2026-07',
+      durationDays: 7,
+      passengers: 2,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    }))
+    const body = await res.json()
+
+    expect(capturedSystemPrompt).toContain('allowedCamperSlugs:')
+    expect(capturedSystemPrompt).toContain('engine-top')
+    expect(capturedSystemPrompt).not.toContain('hobby-t75hf,')
+    expect(capturedSystemPrompt).toContain('[evaluationStatus: success]')
+    expect(mockSearchCampers).not.toHaveBeenCalled()
+    expect(body.recommendations.map((r: { slug: string }) => r.slug)).toEqual(['engine-top'])
+  })
+
+  it('does not return or remember a fake zero price when engine pricing is missing', async () => {
+    mockExtract.mockResolvedValue({})
+    mockSearchCampers.mockResolvedValue([mockCamper])
+    mockEngineResult([{ ...engineCamper, pricing: { status: 'missing_price' } } as any])
+    mockGptCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ reply: 'Ajánlom.', recommendations: [{ slug: 'engine-top', reason: 'Backend-selected.' }], links: [] }) } }],
+    })
+
+    const res = await POST(makeRequest('mutasd az ajánlást', {
+      intent: 'recommendation',
+      month: '2026-07',
+      durationDays: 7,
+      passengers: 2,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    }))
+    const body = await res.json()
+
+    expect(body.recommendations[0].price_per_day).toBeNull()
+    expect(body.updatedState).not.toHaveProperty('lastShownPrice')
+    expect(body.updatedSessionMemory?.lastRecommendationResult).not.toHaveProperty('pricePerDay')
+    expect(body.updatedSessionMemory?.shownOptions?.[0]).not.toHaveProperty('pricePerDay')
+  })
+
+  it('does not let legacy search results override engine topRecommendations', async () => {
+    mockExtract.mockResolvedValue({})
+    mockSearchCampers.mockResolvedValue([mockCamper])
+    mockEngineResult()
+    mockGptCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ reply: 'Ajánlom.', recommendations: [{ slug: 'hobby-t75hf', reason: 'Legacy search result.' }], links: [] }) } }],
+    })
+
+    const res = await POST(makeRequest('mutasd az ajánlást', {
+      intent: 'recommendation',
+      month: '2026-07',
+      durationDays: 7,
+      passengers: 2,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    }))
+    const body = await res.json()
+
+    expect(body.recommendations).toEqual([])
+  })
+
+  it('engine no-results does not leak legacy search candidates', async () => {
+    mockExtract.mockResolvedValue({})
+    mockSearchCampers.mockResolvedValue([mockCamper])
+    mockEngineResult([])
+    mockGptCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ reply: 'Nincs megfelelő találat.', recommendations: [{ slug: 'hobby-t75hf', reason: 'Legacy result.' }], links: [] }) } }],
+    })
+
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ reply: 'Nincs megfelelő találat.', recommendations: [{ slug: 'hobby-t75hf', reason: 'Legacy result.' }], links: [] }) } }],
+      })
+    })
+
+    const res = await POST(makeRequest('mutasd az ajánlást', {
+      intent: 'recommendation',
+      month: '2026-07',
+      durationDays: 7,
+      passengers: 2,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    }))
+    const body = await res.json()
+
+    expect(mockSearchCampers).not.toHaveBeenCalled()
+    expect(capturedSystemPrompt).toContain('[evaluationStatus: no_results]')
+    expect(capturedSystemPrompt).toContain('noResultReasonSummary:')
+    expect(body.recommendations).toEqual([])
+  })
+
+  it('engine failure can use legacy fallback with explicit status', async () => {
+    mockExtract.mockResolvedValue({})
+    mockEvaluateCampers.mockRejectedValue(new Error('engine down'))
+    mockSearchCampers.mockResolvedValue([mockCamper])
+
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ reply: 'Fallback ajánlás.', recommendations: [{ slug: 'hobby-t75hf', reason: 'Legacy fallback.' }], links: [] }) } }],
+      })
+    })
+
+    const res = await POST(makeRequest('mutasd az ajánlást', {
+      intent: 'recommendation',
+      month: '2026-07',
+      durationDays: 7,
+      passengers: 2,
+      campingType: 'camping_site',
+      extraRequirementsAsked: true,
+    }))
+    const body = await res.json()
+
+    expect(mockSearchCampers).toHaveBeenCalled()
+    expect(capturedSystemPrompt).toContain('[evaluationStatus: failed_fallback_used]')
+    expect(body.recommendations.map((r: { slug: string }) => r.slug)).toEqual(['hobby-t75hf'])
   })
 })
 
@@ -324,6 +551,43 @@ describe('Flow 4 – incomplete checklist blocks Supabase', () => {
     await POST(makeRequest('mutasd az ajánlásokat', full))
     expect(mockSearchCampers).toHaveBeenCalled()
   })
+
+  it('does not recommend when user only removes prior wild camping constraint during extraRequirements question', async () => {
+    mockExtract.mockResolvedValue({
+      campingType: 'camping_site',
+      removedCapabilityPreferenceKeys: ['wild_camping'],
+      extraRequirementsAsked: true,
+    })
+    const state: ConversationState = {
+      intent: 'recommendation',
+      flexibleCriteria: {
+        months: ['2026-06', '2026-07', '2026-08'],
+        preferredStartWindows: [{
+          startDate: '2026-06-01',
+          endDate: '2026-08-31',
+          precision: 'season',
+        }],
+      },
+      durationDays: 14,
+      passengers: 1,
+      lastAskedField: 'extraRequirements',
+      capabilityPreferences: [
+        { key: 'wild_camping', strength: 'hard', sourceText: 'vadkempingeznék', detectedLocale: 'hu' },
+      ],
+    }
+
+    const res = await POST(makeRequest(
+      'meggondoltam magam, nem muszáj vadkempingre alkalmas legyen',
+      state,
+    ))
+    const body = await res.json()
+
+    expect(mockEvaluateCampers).not.toHaveBeenCalled()
+    expect(body.recommendations).toEqual([])
+    expect(body.updatedState?.capabilityPreferences).toEqual([])
+    expect(body.updatedState?.extraRequirementsAsked).toBeUndefined()
+    expect(body.updatedState?.lastAskedField).toBe('extraRequirements')
+  })
 })
 
 // ──────────────────────────────────────────────────────────────
@@ -359,7 +623,7 @@ describe('Flow 5 – no specific date → findEarliestAvailableCamper', () => {
     const body = await res.json()
 
     expect(body.updatedState?.lastAskedField).toBe('durationDays')
-    expect(body.reply).toContain('Hány napra terveztek?')
+    expect(body.reply).toContain('Oké, és nagyjából hány napra vinnétek el?')
     expect(mockFindEarliest).not.toHaveBeenCalled()
     expect(mockSearchCampers).not.toHaveBeenCalled()
   })
@@ -442,7 +706,7 @@ describe('Flow 5 – no specific date → findEarliestAvailableCamper', () => {
     expect(body.updatedState?.endDate).toBeUndefined()
     expect(body.updatedState?.pendingAvailabilityConfirmation).toBeUndefined()
     expect(body.updatedState?.lastAskedField).toBe('durationDays')
-    expect(body.reply).toContain('Hány napra tervezed?')
+    expect(body.reply).toContain('Oké, és nagyjából hány napra vinnéd el?')
     expect(body.reply).not.toContain('Hány fővel utaznál')
     expect(mockSearchCampers).not.toHaveBeenCalled()
   })
@@ -468,7 +732,7 @@ describe('Flow 5 – no specific date → findEarliestAvailableCamper', () => {
     expect(body.updatedState?.startDate).toBe('2026-07-12')
     expect(body.updatedState?.pendingAvailabilityConfirmation).toBeUndefined()
     expect(body.updatedState?.lastAskedField).toBe('durationDays')
-    expect(body.reply).toContain('Hány napra tervezed?')
+    expect(body.reply).toContain('Oké, és nagyjából hány napra vinnéd el?')
     expect(body.reply).not.toContain('Leghamarabb')
     expect(mockFindEarliest).not.toHaveBeenCalled()
   })
@@ -495,7 +759,7 @@ describe('Flow 5 – no specific date → findEarliestAvailableCamper', () => {
     expect(body.updatedState?.endDate).toBeUndefined()
     expect(body.updatedState?.pendingAvailabilityConfirmation).toBeUndefined()
     expect(body.updatedState?.lastAskedField).toBe('durationDays')
-    expect(body.reply).toContain('Hány napra tervezed?')
+    expect(body.reply).toContain('Oké, és nagyjából hány napra vinnéd el?')
     expect(body.reply).not.toContain('Leghamarabb')
     expect(mockFindEarliest).not.toHaveBeenCalled()
   })
@@ -524,7 +788,7 @@ describe('Flow 5 – no specific date → findEarliestAvailableCamper', () => {
     expect(body.updatedState?.durationDays).toBe(8)
     expect(body.updatedState?.pendingAvailabilityConfirmation).toBeUndefined()
     expect(body.updatedState?.lastAskedField).toBe('passengers')
-    expect(body.reply).toContain('Hány fővel utaznál?')
+    expect(body.reply).toContain('Rendben, hányan utaznátok összesen?')
     expect(mockSearchCampers).toHaveBeenCalledWith(
       expect.objectContaining({
         startDate: '2026-07-12',
@@ -560,7 +824,7 @@ describe('Flow 5 – no specific date → findEarliestAvailableCamper', () => {
     expect(body.updatedState?.durationDays).toBe(25)
     expect(body.updatedState?.pendingAvailabilityConfirmation).toBeUndefined()
     expect(body.updatedState?.lastAskedField).toBe('passengers')
-    expect(body.reply).toContain('Hány fővel utaznál?')
+    expect(body.reply).toContain('Rendben, hányan utaznátok összesen?')
     expect(body.reply).not.toContain('leghosszabb foglalható')
     expect(mockSearchCampers).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -723,13 +987,17 @@ describe('Flow 8 – iterative recommendation refinement', () => {
     extraRequirementsAsked: true,
   }
 
-  it('refinementPreference "cheaper" is preserved in updatedState', async () => {
+  it('legacy refinementPreference "cheaper" is bridged to refinementIntent and suppressed in updatedState', async () => {
     mockExtract.mockResolvedValue({ refinementPreference: 'cheaper' })
     mockSearchCampers.mockResolvedValue([cheapCamper])
 
     const res = await POST(makeRequest('ez túl drága', { ...fullState, lastShownPrice: 35000 }))
     const body = await res.json()
-    expect(body.updatedState?.refinementPreference).toBe('cheaper')
+    expect(body.updatedState?.refinementPreference).toBeUndefined()
+    expect(body.updatedState?.refinementIntent).toEqual(expect.objectContaining({
+      intent: 'cheaper',
+      sourceText: 'ez túl drága',
+    }))
   })
 
   it('Supabase IS called even with refinement (checklist complete)', async () => {
@@ -853,7 +1121,8 @@ describe('Flow 8 – iterative recommendation refinement', () => {
     const stateAfterRefinement: ConversationState = { ...fullState, lastShownPrice: 35000 }
     const res1 = await POST(makeRequest('ez túl drága', stateAfterRefinement))
     const body1 = await res1.json()
-    expect(body1.updatedState?.refinementPreference).toBe('cheaper')
+    expect(body1.updatedState?.refinementPreference).toBeUndefined()
+    expect(body1.updatedState?.refinementIntent).toEqual(expect.objectContaining({ intent: 'cheaper' }))
 
     // Second turn: no refinement extracted → should reset
     mockExtract.mockResolvedValue({ month: '2026-08' })  // new info, no refinement
@@ -1306,7 +1575,7 @@ describe('Flow 13 – Hard vs soft preference classification', () => {
     expect(body.updatedState?.softPreferences ?? []).not.toContain('automata váltós')
   })
 
-  it('softPreferences appear in GPT context block', async () => {
+  it('legacy softPreferences appear in GPT compatibility context block', async () => {
     let capturedSystemPrompt = ''
     mockGptCreate.mockImplementation((args: any) => {
       const sys = args.messages?.find((m: any) => m.role === 'system')
@@ -1315,11 +1584,12 @@ describe('Flow 13 – Hard vs soft preference classification', () => {
     })
     mockExtract.mockResolvedValue({ softPreferences: ['automata váltós'] })
     await POST(makeRequest('Jó lenne automata', { ...baseState, softPreferences: ['automata váltós'] }))
+    expect(capturedSystemPrompt).toContain('legacyCompatibilityContext')
     expect(capturedSystemPrompt).toContain('softPreferences')
     expect(capturedSystemPrompt).toContain('automata váltós')
   })
 
-  it('hardRequirements appear in GPT context block', async () => {
+  it('legacy extraRequirements appear in GPT compatibility context block', async () => {
     let capturedSystemPrompt = ''
     mockGptCreate.mockImplementation((args: any) => {
       const sys = args.messages?.find((m: any) => m.role === 'system')
@@ -1328,8 +1598,10 @@ describe('Flow 13 – Hard vs soft preference classification', () => {
     })
     mockExtract.mockResolvedValue({})
     await POST(makeRequest('Mutasd az ajánlást', { ...baseState, extraRequirements: ['automata váltós'] }))
-    expect(capturedSystemPrompt).toContain('hardRequirements')
+    expect(capturedSystemPrompt).toContain('legacyCompatibilityContext')
+    expect(capturedSystemPrompt).toContain('extraRequirements')
     expect(capturedSystemPrompt).toContain('automata váltós')
+    expect(capturedSystemPrompt).not.toContain('[hardRequirements:')
   })
 
   it('softPreferences are deduplicated across messages', async () => {
@@ -1548,18 +1820,19 @@ describe('Flow 15 – Advisor context: userSummary in GPT context', () => {
     expect(capturedSystemPrompt).not.toMatch(/Amit a userről tudunk:\n/)
   })
 
-  it('wildCampingSuitable:igen appears in camperSummary when car supports wild camping', async () => {
-    const wildCamper: CamperResult = { ...mockCamper, wildCampingSuitable: true }
-    mockSearchCampers.mockResolvedValue([wildCamper])
+  it('wildCampingSuitable does not appear as a camperSummary decision source', async () => {
+    mockSearchCampers.mockResolvedValue([mockCamper])
     await POST(makeRequest('Ajánlj vadkempingre', richState))
-    expect(capturedSystemPrompt).toContain('wildCamping: yes')
+    expect(capturedSystemPrompt).not.toContain('wildCamping: yes')
+    expect(capturedSystemPrompt).not.toContain('wildCamping:')
   })
 
-  it('wildCampingSuitable:nem appears in camperSummary when car does not support wild camping', async () => {
-    const noCampCamper: CamperResult = { ...mockCamper, slug: 'city-camper', wildCampingSuitable: false }
+  it('wildCampingSuitable does not appear as a camperSummary decision source for another camper', async () => {
+    const noCampCamper: CamperResult = { ...mockCamper, slug: 'city-camper' }
     mockSearchCampers.mockResolvedValue([noCampCamper])
     await POST(makeRequest('Ajánlj valamit', richState))
-    expect(capturedSystemPrompt).toContain('wildCamping: no')
+    expect(capturedSystemPrompt).not.toContain('wildCamping: no')
+    expect(capturedSystemPrompt).not.toContain('wildCamping:')
   })
 })
 
@@ -1723,7 +1996,7 @@ describe('Flow 17 – Anti-hallucination: honest uncertainty rules', () => {
   describe('recommend mode context includes data source warning', () => {
     const baseCamper = {
       slug: 'hobby-t75hf', name: 'Hobby T75HF', type: 'alkóvos', beds: 6,
-      price_per_day: 38000, image_url: '/img.jpg', wildCampingSuitable: false,
+      price_per_day: 38000, image_url: '/img.jpg',
       availableSlots: [{ from: '2026-08-01', to: '2026-08-10', days: 9 }],
     }
 
@@ -1768,7 +2041,7 @@ describe('Flow 17 – Anti-hallucination: honest uncertainty rules', () => {
 describe('Flow 18 – Summarize: shouldSummarize flag in GPT context', () => {
   const baseCamper: CamperResult = {
     slug: 'hobby-t75hf', name: 'Hobby T75HF', type: 'alkóvos', beds: 6,
-    price_per_day: 38000, image_url: '/img.jpg', wildCampingSuitable: false,
+    price_per_day: 38000, image_url: '/img.jpg',
     availableSlots: [{ from: '2026-08-01', to: '2026-08-10', days: 9 }],
   }
 
@@ -2631,7 +2904,8 @@ describe('Regression – checklist blocks Supabase on fresh recommendation start
     expect(body.updatedState?.passengers).toBe(2)
     expect(body.updatedState?.lastAskedField).toBe('month')
     expect(body.recommendations).toEqual([])
-    expect(body.reply).toContain('Mikor szeretnétek menni')
+    expect(body.reply).toContain('Mikor')
+    expect(body.reply).toContain('?')
   })
 
   it('Test 3: teljes checklist → getNextMissingQuestion null, Supabase fut', async () => {
@@ -2768,7 +3042,7 @@ describe('Regression - ask_next_question strips stale extra questions', () => {
 
     expect(body.updatedState?.passengers).toBe(4)
     expect(body.updatedState?.lastAskedField).toBe('campingType')
-    expect(body.reply).toBe('Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?')
+    expect(body.reply).toBe('Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?')
     expect(body.reply).not.toContain('Megfelel ez az időszak')
   })
 
@@ -2788,7 +3062,7 @@ describe('Regression - ask_next_question strips stale extra questions', () => {
     const body = await res.json()
 
     expect(body.updatedState?.lastAskedField).toBe('campingType')
-    expect(body.reply).toBe('Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?')
+    expect(body.reply).toBe('Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?')
     expect(body.reply).not.toContain('2026. július 13.')
     expect(body.reply).not.toContain('2026. augusztus 6.')
     expect(body.reply).not.toContain('Találtam szabad opciót')
@@ -2819,7 +3093,7 @@ describe('Regression - ask_next_question strips stale extra questions', () => {
     expect(body.updatedState?.passengers).toBe(4)
     expect(body.updatedState?.pendingAvailabilityConfirmation).toBeUndefined()
     expect(body.updatedState?.lastAskedField).toBe('campingType')
-    expect(body.reply).toBe('Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?')
+    expect(body.reply).toBe('Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?')
     expect(body.reply).not.toContain('Megfelel ez az időszak')
     expect(mockFindEarliest).not.toHaveBeenCalled()
   })
@@ -2841,7 +3115,7 @@ describe('Regression - ask_next_question strips stale extra questions', () => {
 
     expect(body.updatedState?.passengers).toBe(4)
     expect(body.updatedState?.lastAskedField).toBe('campingType')
-    expect(body.reply).toBe('Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?')
+    expect(body.reply).toBe('Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?')
     expect(mockFindEarliest).not.toHaveBeenCalled()
   })
 })
@@ -2854,7 +3128,9 @@ describe('Regression - exact period fallback is explained conversationally', () 
       endDate: '2026-08-06',
       durationDays: 25,
       passengers: 4,
-      campingType: 'wild',
+      capabilityPreferences: [
+        { key: 'wild_camping', strength: 'hard', sourceText: 'vadkemping', detectedLocale: 'hu' },
+      ],
       extraRequirementsAsked: true,
     }
     const fallbackCamper: CamperResult = {
@@ -3230,7 +3506,7 @@ describe('Regression - rental availability question starts availability checklis
     expect(body.reply).not.toContain('Erről jelenleg nincs pontos információm')
     expect(body.reply).toContain('Találtam szabad opciót')
     expect(body.reply).toContain('ban')
-    expect(body.reply).toContain('Hány napra tervezed?')
+    expect(body.reply).toContain('Oké, és nagyjából hány napra vinnéd el?')
     expect(mockSearchCampers).toHaveBeenCalledWith(
       expect.objectContaining({ intent: 'availability', month: currentMonth }),
     )
@@ -3251,7 +3527,7 @@ describe('Regression - rental availability question starts availability checklis
     expect(body.reply).toContain('2026. júliusra')
     expect(body.reply).toContain('nem találok szabad lakóautót')
     expect(body.reply).toContain('legkorábbi hónap')
-    expect(body.reply).not.toContain('Hány napra tervezed?')
+    expect(body.reply).not.toContain('Oké, és nagyjából hány napra vinnéd el?')
     expect(mockSearchCampers).toHaveBeenCalledTimes(1)
   })
 
@@ -3314,15 +3590,6 @@ describe('Regression - rental availability question starts availability checklis
         startDate: '2026-06-30',
       }),
     )
-    expect(body.updatedState?.lastAvailabilitySlots).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          startDate: '2026-06-30',
-          endDate: '2026-07-04',
-          durationDays: 5,
-        }),
-      ]),
-    )
     expect(body.updatedState?.conversationMemory?.mentionedAvailabilityOptions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -3372,15 +3639,6 @@ describe('Regression - rental availability question starts availability checklis
         endDate: '2026-08-06',
         durationDays: 25,
       }),
-    )
-    expect(body.updatedState?.lastAvailabilitySlots).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          startDate: '2026-07-13',
-          endDate: '2026-08-06',
-          durationDays: 25,
-        }),
-      ]),
     )
     expect(body.updatedState?.conversationMemory?.mentionedAvailabilityOptions).toEqual(
       expect.arrayContaining([
@@ -3501,7 +3759,7 @@ describe('Regression - rental availability question starts availability checklis
     expect(body.updatedState?.lastAskedField).toBe('passengers')
     expect(body.reply).toContain('Találtam szabad opciót')
     expect(body.reply).toContain('2026. júliusban')
-    expect(body.reply).toContain('Hány fővel utaznál?')
+    expect(body.reply).toContain('Rendben, hányan utaznátok összesen?')
     expect(mockSearchCampers).toHaveBeenCalledWith(
       expect.objectContaining({ month: '2026-07', durationDays: 10 }),
     )
@@ -3641,6 +3899,60 @@ describe('Regression - explicit session layers travel between turns', () => {
     }
     mockExtract.mockResolvedValue({})
     mockSearchCampers.mockResolvedValue([mockCamper])
+    const engineRecommendation = {
+      camperId: 'hobby-id',
+      camperSlug: 'hobby-t75hf',
+      camperName: 'Hobby T75HF',
+      status: 'eligible',
+      score: 42,
+      hardFailures: [],
+      scoreBreakdown: [{ key: 'capacity', label: 'Megfelel a létszámnak', points: 20 }],
+      capabilityMatches: [{
+        capabilityKey: 'off_grid',
+        strength: 'soft',
+        score: 0.6,
+        matchedWeight: 6,
+        totalWeight: 10,
+        matchedFeatures: ['solar_panel'],
+        missingFeatures: ['inverter'],
+      }],
+      pricing: {
+        status: 'priced',
+        pricePerDay: 35000,
+        durationDays: 7,
+        subtotal: 245000,
+        discountPercent: 0,
+        discountAmount: 0,
+        total: 245000,
+      },
+      availableSlots: [{ from: '2026-08-01', to: '2026-08-07', days: 7 }],
+      featureKeys: ['solar_panel', 'cassette_wc'],
+      attributeFacts: {
+        beds: 6,
+        type: 'Alkóvos',
+        gearbox: 'Manuális',
+        year: 2024,
+      },
+      availabilitySummary: { from: '2026-08-01', to: '2026-08-07', days: 7 },
+      imageUrl: 'https://example.com/hobby.jpg',
+      type: 'Alkóvos',
+      beds: 6,
+    }
+    mockEvaluateCampers.mockResolvedValue({
+      evaluations: [engineRecommendation],
+      topRecommendations: [engineRecommendation],
+      branches: [],
+      branchSummary: [],
+      pricingSummary: {
+        pricedCount: 1,
+        missingPriceCount: 0,
+      },
+      discountOpportunities: [],
+      explanationContext: {
+        hardConstraintKeys: [],
+        softScoringKeys: [],
+      },
+    })
     mockGptCreate.mockResolvedValue({
       choices: [{
         message: {
@@ -3663,13 +3975,40 @@ describe('Regression - explicit session layers travel between turns', () => {
         from: '2026-08-01',
         to: '2026-08-07',
         days: 7,
+        criteria: expect.objectContaining({
+          month: '2026-07',
+          durationDays: 7,
+          passengers: 2,
+          campingType: 'camping_site',
+        }),
+        criteriaHash: expect.any(String),
+        optionId: expect.stringMatching(/^rec_1_hobby-t75hf_/),
+        shownIndex: 1,
+        pricePerDay: 35000,
+        totalPrice: 245000,
+        score: 42,
+        source: 'evaluation_engine',
+        featureKeys: ['solar_panel', 'cassette_wc'],
+        attributeFacts: expect.objectContaining({
+          gearbox: 'Manuális',
+          year: 2024,
+        }),
+        capabilityMatches: [
+          expect.objectContaining({
+            capabilityKey: 'off_grid',
+            matchedFeatures: ['solar_panel'],
+          }),
+        ],
       }),
     )
     expect(body.updatedSessionMemory?.shownOptions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           index: 1,
+          optionId: expect.stringMatching(/^rec_1_hobby-t75hf_/),
           camperSlug: 'hobby-t75hf',
+          criteriaHash: body.updatedSessionMemory?.lastRecommendationResult?.criteriaHash,
+          featureKeys: ['solar_panel', 'cassette_wc'],
         }),
       ]),
     )
@@ -3742,7 +4081,7 @@ describe('Regression - explicit session layers travel between turns', () => {
     )
   })
 
-  it('treats 4 passengers + wild -> 2 passengers + camping_site as compatible_relaxed', async () => {
+  it('treats legacy 4 passengers + wild campingType -> 2 passengers + camping_site as stale', async () => {
     const state: ConversationState = {
       intent: 'availability',
       durationDays: 25,
@@ -3798,19 +4137,13 @@ describe('Regression - explicit session layers travel between turns', () => {
 
     expect(mockSearchCampers).not.toHaveBeenCalled()
     expect(mockFindEarliest).not.toHaveBeenCalled()
-    expect(body.reply).toContain('lazább feltételekkel')
+    expect(body.reply).toContain('előző feltételek mellett')
     expect(body.reply).toContain('2026. június 30.')
     expect(body.reply).toContain('5 napra')
-    expect(body.reply).toContain('Megfelel ez az időszak?')
-    expect(body.updatedState?.pendingAvailabilityConfirmation).toEqual(
-      expect.objectContaining({
-        startDate: '2026-06-30',
-        endDate: '2026-07-04',
-        durationDays: 5,
-        camperSlug: 'hymer-ayers-rock',
-      }),
+    expect(body.reply).not.toContain('Megfelel ez az időszak?')
+    expect(body.updatedSessionMemory?.staleAvailabilityResults).toEqual(
+      expect.arrayContaining([expect.objectContaining({ from: '2026-06-30' })]),
     )
-    expect(body.updatedSessionMemory?.staleAvailabilityResults).toBeUndefined()
   })
 
   it('treats passenger increase as needs_recheck', async () => {
@@ -3869,7 +4202,7 @@ describe('Regression - explicit session layers travel between turns', () => {
     )
   })
 
-  it('treats camping_site -> wild as needs_recheck', async () => {
+  it('treats camping_site -> legacy wild campingType as stale', async () => {
     const state: ConversationState = {
       intent: 'availability',
       durationDays: 20,
@@ -3913,7 +4246,7 @@ describe('Regression - explicit session layers travel between turns', () => {
     const res = await POST(makeRequest('a korábbi időpontban hány napra lehetne?', state, [], {}, sessionMemory))
     const body = await res.json()
 
-    expect(body.reply).toContain('szigorúbbak')
+    expect(body.reply).toContain('előző feltételek mellett')
     expect(body.reply).not.toContain('Megfelel ez az időszak?')
     expect(body.updatedSessionMemory?.staleAvailabilityResults).toEqual(
       expect.arrayContaining([expect.objectContaining({ from: '2026-06-30' })]),
@@ -4075,5 +4408,778 @@ describe('Regression - explicit session layers travel between turns', () => {
     expect(body.updatedSessionMemory?.staleAvailabilityResults).toEqual(
       expect.arrayContaining([expect.objectContaining({ from: '2026-06-30' })]),
     )
+  })
+})
+
+describe('Recommendation reference resolver route integration', () => {
+  const referenceState: ConversationState = {
+    intent: 'recommendation',
+    month: '2026-07',
+    durationDays: 7,
+    passengers: 2,
+    campingType: 'camping_site',
+    extraRequirementsAsked: true,
+  }
+  const referenceSessionMemory: SessionMemory = {
+    lastRecommendationResult: {
+      optionId: 'rec_2_hymer_abc',
+      camperSlug: 'hymer-ayers-rock',
+      camperName: 'Hymer Ayers Rock',
+      shownIndex: 2,
+      criteria: {
+        month: '2026-07',
+        durationDays: 7,
+        passengers: 2,
+        campingType: 'camping_site',
+      },
+      criteriaHash: 'hash-a',
+      pricePerDay: 62000,
+    },
+    shownOptions: [
+      {
+        index: 1,
+        optionId: 'rec_1_hobby-t75hf_abc',
+        camperSlug: 'hobby-t75hf',
+        camperName: 'Hobby T75HF',
+        criteria: {
+          month: '2026-07',
+          durationDays: 7,
+          passengers: 2,
+          campingType: 'camping_site',
+        },
+        criteriaHash: 'hash-a',
+        pricePerDay: 58000,
+        featureKeys: ['solar_panel'],
+        attributeFacts: {
+          beds: 4,
+          type: 'Alkóvos',
+          gearbox: 'Manuális',
+        },
+        capabilityMatches: [{
+          capabilityKey: 'off_grid',
+          strength: 'soft',
+          score: 0.7,
+          matchedWeight: 7,
+          totalWeight: 10,
+          matchedFeatures: ['solar_panel'],
+          missingFeatures: ['inverter'],
+        }],
+      },
+      {
+        index: 2,
+        optionId: 'rec_2_hymer_abc',
+        camperSlug: 'hymer-ayers-rock',
+        camperName: 'Hymer Ayers Rock',
+        criteria: {
+          month: '2026-07',
+          durationDays: 7,
+          passengers: 2,
+          campingType: 'camping_site',
+        },
+        criteriaHash: 'hash-a',
+        pricePerDay: 62000,
+        featureKeys: ['cassette_wc'],
+        attributeFacts: {
+          beds: 2,
+          type: 'Camper van',
+          gearbox: 'Automata',
+        },
+        capabilityMatches: [],
+      },
+    ],
+  }
+
+  function capturePromptWithEmptyResponse() {
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ reply: 'Rendben.', recommendations: [], links: [] }) } }],
+      })
+    })
+    return () => capturedSystemPrompt
+  }
+
+  beforeEach(() => {
+    mockSearchCampers.mockResolvedValue([])
+    mockEvaluateCampers.mockResolvedValue({
+      evaluations: [],
+      topRecommendations: [],
+      branches: [],
+      branchSummary: [],
+      pricingSummary: { pricedCount: 0, missingPriceCount: 0 },
+      discountOpportunities: [],
+      explanationContext: { hardConstraintKeys: [], softScoringKeys: [] },
+    })
+  })
+
+  it('passes resolved lastRecommendation reference context and writes referenced event', async () => {
+    mockExtract.mockResolvedValue({ referenceTarget: 'lastRecommendation' })
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    const res = await POST(makeRequest('az előző érdekel', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(getPrompt()).toContain('RECOMMENDATION REFERENCE RESOLUTION')
+    expect(getPrompt()).toContain('"status":"resolved"')
+    expect(getPrompt()).toContain('"optionId":"rec_2_hymer_abc"')
+    expect(getPrompt()).toContain('"status":"compatible"')
+    expect(body.updatedSessionMemory?.memoryEvents).toEqual([
+      expect.objectContaining({
+        eventType: 'referenced',
+        optionId: 'rec_2_hymer_abc',
+        camperSlug: 'hymer-ayers-rock',
+      }),
+    ])
+  })
+
+  it('passes resolved firstShownOption reference context', async () => {
+    mockExtract.mockResolvedValue({ referenceTarget: 'firstShownOption' })
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    const res = await POST(makeRequest('az első', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(getPrompt()).toContain('"status":"resolved"')
+    expect(getPrompt()).toContain('"optionId":"rec_1_hobby-t75hf_abc"')
+    expect(body.updatedSessionMemory?.memoryEvents?.[0]).toEqual(expect.objectContaining({
+      eventType: 'referenced',
+      optionId: 'rec_1_hobby-t75hf_abc',
+    }))
+  })
+
+  it('passes resolved lastShownOption reference context', async () => {
+    mockExtract.mockResolvedValue({ referenceTarget: 'lastShownOption' })
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    await POST(makeRequest('az utolsó', referenceState, [], {}, referenceSessionMemory))
+
+    expect(getPrompt()).toContain('"status":"resolved"')
+    expect(getPrompt()).toContain('"optionId":"rec_2_hymer_abc"')
+  })
+
+  it('passes resolved fact reference context', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationReference: { kind: 'feature', featureKey: 'solar_panel' },
+    })
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    const res = await POST(makeRequest('a napelemes', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(getPrompt()).toContain('"status":"resolved"')
+    expect(getPrompt()).toContain('"optionId":"rec_1_hobby-t75hf_abc"')
+    expect(body.updatedSessionMemory?.memoryEvents?.[0]).toEqual(expect.objectContaining({
+      eventType: 'referenced',
+      optionId: 'rec_1_hobby-t75hf_abc',
+    }))
+  })
+
+  it('does not choose target or write referenced event for ambiguous fact reference', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationReference: { kind: 'feature', featureKey: 'solar_panel' },
+    })
+    const ambiguousMemory: SessionMemory = {
+      ...referenceSessionMemory,
+      shownOptions: [
+        referenceSessionMemory.shownOptions![0],
+        {
+          ...referenceSessionMemory.shownOptions![1],
+          featureKeys: ['solar_panel'],
+        },
+      ],
+    }
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    const res = await POST(makeRequest('a napelemes', referenceState, [], {}, ambiguousMemory))
+    const body = await res.json()
+
+    expect(getPrompt()).toContain('"status":"ambiguous"')
+    expect(getPrompt()).toContain('"multiple_feature_reference_matches"')
+    expect(body.updatedSessionMemory?.memoryEvents).toBeUndefined()
+    expect(body.recommendations).toEqual([])
+  })
+
+  it('does not guess or write referenced event for not_found fact reference', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationReference: { kind: 'feature', featureKey: 'bike_rack' },
+    })
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    const res = await POST(makeRequest('a biciklitartós', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(getPrompt()).toContain('"status":"not_found"')
+    expect(getPrompt()).toContain('"no_feature_reference_match"')
+    expect(body.updatedSessionMemory?.memoryEvents).toBeUndefined()
+    expect(body.updatedState).toEqual(expect.objectContaining(referenceState))
+  })
+
+  it('passes needs_recheck compatibility context without changing scoring source', async () => {
+    mockExtract.mockResolvedValue({ referenceTarget: 'firstShownOption' })
+    const getPrompt = capturePromptWithEmptyResponse()
+
+    await POST(makeRequest('az első', { ...referenceState, passengers: 4 }, [], {}, referenceSessionMemory))
+
+    expect(getPrompt()).toContain('"compatibility":{"status":"needs_recheck"')
+    expect(mockEvaluateCampers).toHaveBeenCalled()
+    expect(mockSearchCampers).not.toHaveBeenCalled()
+  })
+
+  it('writes selected event for a resolved recommendation interaction', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationInteraction: {
+        type: 'selected',
+        targetReference: 'firstShownOption',
+        sourceText: 'az első jó',
+      },
+    })
+
+    const res = await POST(makeRequest('az első jó', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.memoryEvents).toEqual([
+      expect.objectContaining({
+        eventType: 'selected',
+        optionId: 'rec_1_hobby-t75hf_abc',
+        camperSlug: 'hobby-t75hf',
+        metadata: expect.objectContaining({
+          sourceText: 'az első jó',
+          interactionType: 'selected',
+          referenceTarget: 'firstShownOption',
+        }),
+      }),
+    ])
+    expect(body.updatedSessionMemory?.memoryEvents?.some((event: any) => event.eventType === 'referenced')).toBe(false)
+    expect(body.updatedState?.selectedCamperSlug).toBeUndefined()
+    expect(body.updatedState?.pricingPreference).toBeUndefined()
+  })
+
+  it('writes dismissed event for a resolved recommendation interaction', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationInteraction: {
+        type: 'dismissed',
+        targetReference: 'lastShownOption',
+        sourceText: 'ezt ne',
+      },
+    })
+
+    const res = await POST(makeRequest('ezt ne', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.memoryEvents?.[0]).toEqual(expect.objectContaining({
+      eventType: 'dismissed',
+      optionId: 'rec_2_hymer_abc',
+      camperSlug: 'hymer-ayers-rock',
+      metadata: expect.objectContaining({
+        sourceText: 'ezt ne',
+        interactionType: 'dismissed',
+        referenceTarget: 'lastShownOption',
+      }),
+    }))
+    expect(body.updatedState?.selectedCamperSlug).toBeUndefined()
+    expect(body.updatedState?.pricingPreference).toBeUndefined()
+  })
+
+  it('writes compared event only when both recommendation targets resolve', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationInteraction: {
+        type: 'compared',
+        targetReference: 'firstShownOption',
+        secondaryTargetReference: 'lastShownOption',
+        sourceText: 'az első jobb mint az utolsó',
+      },
+    })
+
+    const res = await POST(makeRequest('az első jobb mint az utolsó', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.memoryEvents?.[0]).toEqual(expect.objectContaining({
+      eventType: 'compared',
+      optionId: 'rec_1_hobby-t75hf_abc',
+      camperSlug: 'hobby-t75hf',
+      metadata: expect.objectContaining({
+        sourceText: 'az első jobb mint az utolsó',
+        interactionType: 'compared',
+        referenceTarget: 'firstShownOption',
+        secondaryReferenceTarget: 'lastShownOption',
+        comparedOptionId: 'rec_2_hymer_abc',
+        comparedCamperSlug: 'hymer-ayers-rock',
+      }),
+    }))
+    expect(body.updatedSessionMemory?.memoryEvents?.[0].metadata?.winnerOptionId).toBeUndefined()
+    expect(body.updatedState?.selectedCamperSlug).toBeUndefined()
+  })
+
+  it('does not write interaction event for ambiguous recommendation target', async () => {
+    const ambiguousMemory: SessionMemory = {
+      ...referenceSessionMemory,
+      shownOptions: [
+        referenceSessionMemory.shownOptions![0],
+        {
+          ...referenceSessionMemory.shownOptions![1],
+          featureKeys: ['solar_panel'],
+        },
+      ],
+    }
+    mockExtract.mockResolvedValue({
+      recommendationInteraction: {
+        type: 'selected',
+        targetRecommendationReference: { kind: 'feature', featureKey: 'solar_panel' },
+        sourceText: 'a napelemes jó',
+      },
+    })
+
+    const res = await POST(makeRequest('a napelemes jó', referenceState, [], {}, ambiguousMemory))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.memoryEvents).toBeUndefined()
+    expect(body.updatedState?.selectedCamperSlug).toBeUndefined()
+  })
+
+  it('does not write interaction event for not_found recommendation target', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationInteraction: {
+        type: 'dismissed',
+        targetRecommendationReference: { kind: 'feature', featureKey: 'bike_rack' },
+        sourceText: 'a biciklitartós nem jó',
+      },
+    })
+
+    const res = await POST(makeRequest('a biciklitartós nem jó', referenceState, [], {}, referenceSessionMemory))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.memoryEvents).toBeUndefined()
+    expect(body.updatedState?.selectedCamperSlug).toBeUndefined()
+  })
+
+  it('keeps memory event history within the configured limit after route interaction append', async () => {
+    const existingEvents = Array.from({ length: MAX_MEMORY_EVENTS }, (_, index) => createMemoryEvent({
+      eventType: 'shown',
+      optionId: `old_${index}`,
+      camperSlug: `old-camper-${index}`,
+    }, `2026-01-01T00:00:${String(index).padStart(2, '0')}.000Z`))
+    mockExtract.mockResolvedValue({
+      recommendationInteraction: {
+        type: 'selected',
+        targetReference: 'lastRecommendation',
+        sourceText: 'ez lesz',
+      },
+    })
+
+    const res = await POST(makeRequest(
+      'ez lesz',
+      referenceState,
+      [],
+      {},
+      { ...referenceSessionMemory, memoryEvents: existingEvents },
+    ))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.memoryEvents).toHaveLength(MAX_MEMORY_EVENTS)
+    expect(body.updatedSessionMemory?.memoryEvents?.some((event: any) => event.eventType === 'selected')).toBe(true)
+    expect(body.updatedSessionMemory?.memoryEvents?.some((event: any) => event.optionId === 'old_0')).toBe(false)
+  })
+
+  it('sanitizes incoming sessionMemory before route reference handling', async () => {
+    const memoryEvents = Array.from({ length: MAX_MEMORY_EVENTS + 2 }, (_, index) => ({
+      eventId: `event_${index}`,
+      eventType: 'shown',
+      timestamp: '2026-06-13T00:00:00.000Z',
+      optionId: `rec_${index}`,
+      metadata: {
+        sequence: index,
+        nested: { shouldDrop: true },
+      },
+    }))
+    mockExtract.mockResolvedValue({ referenceTarget: 'lastRecommendation' })
+
+    const res = await POST(makeRequest(
+      'az előző érdekel',
+      referenceState,
+      [],
+      {},
+      {
+        shownOptions: [{ optionId: 'broken-without-index' }],
+        memoryEvents,
+        lastComparedCamper: 123,
+      } as any,
+    ))
+    const body = await res.json()
+
+    expect(body.updatedSessionMemory?.shownOptions).toBeUndefined()
+    expect(body.updatedSessionMemory?.lastComparedCamper).toBeUndefined()
+    expect(body.updatedSessionMemory?.memoryEvents).toHaveLength(MAX_MEMORY_EVENTS)
+    expect(body.updatedSessionMemory?.memoryEvents?.[0].eventId).toBe('event_2')
+    expect(body.updatedSessionMemory?.memoryEvents?.[0].metadata).toEqual({ sequence: 2 })
+    expect(body.updatedSessionMemory?.memoryEvents?.some((event: any) => event.eventType === 'referenced')).toBe(false)
+  })
+})
+
+describe('Phase 8C.2 – state-driven refinement re-evaluation pipeline', () => {
+  const baseState: ConversationState = {
+    intent: 'recommendation',
+    month: '2026-07',
+    durationDays: 7,
+    passengers: 2,
+    campingType: 'camping_site',
+    extraRequirementsAsked: true,
+    lastShownCamperSlug: 'hobby-t75hf',
+    lastShownPrice: 42000,
+    alreadyRecommendedSlugs: ['hobby-t75hf'],
+  }
+
+  const sessionMemory: SessionMemory = {
+    lastRecommendationResult: {
+      optionId: 'rec_2_hymer_abc',
+      camperSlug: 'hymer-ayers-rock',
+      camperName: 'Hymer Ayers Rock',
+      shownIndex: 2,
+      criteria: {
+        month: '2026-07',
+        durationDays: 7,
+        passengers: 2,
+        campingType: 'camping_site',
+      },
+      criteriaHash: '{"month":"2026-07","durationDays":7,"passengers":2,"campingType":"camping_site"}',
+      pricePerDay: 52000,
+      attributeFacts: {
+        beds: 4,
+        type: 'Camper van',
+        gearbox: 'Automata',
+      },
+    },
+    shownOptions: [
+      {
+        index: 1,
+        optionId: 'rec_1_hobby-t75hf_abc',
+        camperSlug: 'hobby-t75hf',
+        camperName: 'Hobby T75HF',
+        criteria: {
+          month: '2026-07',
+          durationDays: 7,
+          passengers: 2,
+          campingType: 'camping_site',
+        },
+        criteriaHash: '{"month":"2026-07","durationDays":7,"passengers":2,"campingType":"camping_site"}',
+        pricePerDay: 42000,
+        featureKeys: ['solar_panel'],
+        attributeFacts: {
+          beds: 6,
+          type: 'Alkóvos',
+          gearbox: 'Manuális',
+        },
+        capabilityMatches: [],
+      },
+      {
+        index: 2,
+        optionId: 'rec_2_hymer_abc',
+        camperSlug: 'hymer-ayers-rock',
+        camperName: 'Hymer Ayers Rock',
+        criteria: {
+          month: '2026-07',
+          durationDays: 7,
+          passengers: 2,
+          campingType: 'camping_site',
+        },
+        criteriaHash: '{"month":"2026-07","durationDays":7,"passengers":2,"campingType":"camping_site"}',
+        pricePerDay: 52000,
+        featureKeys: [],
+        attributeFacts: {
+          beds: 4,
+          type: 'Camper van',
+          gearbox: 'Automata',
+        },
+        capabilityMatches: [],
+      },
+    ],
+  }
+
+  function engineEvaluation(slug: string, name: string, pricePerDay = 30000, beds = 2) {
+    return {
+      camperId: `${slug}-id`,
+      camperSlug: slug,
+      camperName: name,
+      status: 'eligible',
+      score: 50,
+      hardFailures: [],
+      scoreBreakdown: [{ key: 'capacity', label: 'Megfelel a létszámnak', points: 20 }],
+      capabilityMatches: [],
+      pricing: { status: 'priced', pricePerDay, total: pricePerDay * 7 },
+      availableSlots: [{ from: '2026-07-10', to: '2026-07-17', days: 7 }],
+      featureKeys: [],
+      attributeFacts: {
+        beds,
+        type: 'Camper van',
+        gearbox: 'Automata',
+      },
+      availabilitySummary: { from: '2026-07-10', to: '2026-07-17', days: 7 },
+      imageUrl: `https://example.com/${slug}.jpg`,
+      type: 'Camper van',
+      beds,
+    }
+  }
+
+  function mockEngineRecommendation(
+    slug = 'cheap-one',
+    name = 'Cheap One',
+    pricePerDay = 30000,
+    beds = 2,
+    captureState?: (state: ConversationState) => void,
+  ) {
+    const recommendation = engineEvaluation(slug, name, pricePerDay, beds)
+    const result = {
+      evaluations: [recommendation],
+      topRecommendations: [recommendation],
+      branches: [],
+      branchSummary: [],
+      pricingSummary: { pricedCount: 1, missingPriceCount: 0 },
+      discountOpportunities: [],
+      explanationContext: { hardConstraintKeys: [], softScoringKeys: ['capacity'] },
+    }
+    mockEvaluateCampers.mockImplementation((state: ConversationState) => {
+      captureState?.(JSON.parse(JSON.stringify(state)))
+      return Promise.resolve(result)
+    })
+    return recommendation
+  }
+
+  function mockRecommendationResponse(slug: string) {
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            reply: 'Mutatok egy új opciót az aktuális feltételekre.',
+            recommendations: [{ slug, reason: 'Backend-selected refinement result.' }],
+            links: [],
+          }),
+        },
+      }],
+    })
+    })
+    return () => capturedSystemPrompt
+  }
+
+  it('resolved reference + cheaper creates pricing delta and reruns the Evaluation Engine', async () => {
+    mockExtract.mockResolvedValue({
+      referenceTarget: 'lastRecommendation',
+      refinementIntent: { intent: 'cheaper', sourceText: 'abból olcsóbbat' },
+    })
+    let evaluatedState: ConversationState | undefined
+    mockEngineRecommendation('cheap-one', 'Cheap One', 30000, 2, state => {
+      evaluatedState = state
+    })
+    const getPrompt = mockRecommendationResponse('cheap-one')
+
+    const res = await POST(makeRequest('abból olcsóbbat', baseState, [], {}, sessionMemory))
+    const body = await res.json()
+
+    expect(mockEvaluateCampers).toHaveBeenCalledTimes(1)
+    expect(evaluatedState?.pricingPreference).toEqual(expect.objectContaining({
+      intent: 'cheaper',
+      referencePricePerDay: 52000,
+    }))
+    expect(evaluatedState?.lastShownCamperSlug).toBe('hymer-ayers-rock')
+    expect(body.recommendations.map((item: { slug: string }) => item.slug)).toEqual(['cheap-one'])
+    expect(body.updatedState?.pricingPreference).toEqual(expect.objectContaining({ intent: 'cheaper' }))
+    expect(body.updatedSessionMemory?.memoryEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventType: 'referenced',
+          optionId: 'rec_2_hymer_abc',
+          camperSlug: 'hymer-ayers-rock',
+        }),
+        expect.objectContaining({
+          eventType: 'shown',
+          camperSlug: 'cheap-one',
+        }),
+      ]),
+    )
+    expect(body.updatedSessionMemory?.lastRecommendationResult).toEqual(
+      expect.objectContaining({
+        camperSlug: 'cheap-one',
+        source: 'evaluation_engine',
+      }),
+    )
+    expect(getPrompt()).toContain('REFINEMENT CONTEXT')
+    expect(getPrompt()).toContain('"intent":"cheaper"')
+    expect(getPrompt()).toContain('"referencedTarget":{"optionId":"rec_2_hymer_abc"')
+    expect(getPrompt()).toContain('"referenceResolution":{"status":"resolved"')
+    expect(getPrompt()).toContain('"compatibility":{"status":"compatible"')
+    expect(getPrompt()).toContain('"stateDeltaSummary":["pricingPreference.intent=cheaper"]')
+    expect(getPrompt()).toContain('"rerunTriggered":true')
+    expect(getPrompt()).toContain('"newBackendSelectedRecommendations":["cheap-one"]')
+    expect(getPrompt()).toContain('BACKEND SELECTED RECOMMENDATIONS')
+    expect(getPrompt()).toContain('cheap-one')
+    expect(getPrompt()).not.toContain('memory as a recommendation truth source')
+  })
+
+  it('resolved reference + cheaper does not expose a more expensive engine result', async () => {
+    mockExtract.mockResolvedValue({
+      referenceTarget: 'lastRecommendation',
+      refinementIntent: { intent: 'cheaper', sourceText: 'abból olcsóbbat' },
+    })
+    let evaluatedState: ConversationState | undefined
+    mockEngineRecommendation('expensive-one', 'Expensive One', 70000, 2, state => {
+      evaluatedState = state
+    })
+    const getPrompt = mockRecommendationResponse('expensive-one')
+
+    const res = await POST(makeRequest('abból olcsóbbat', baseState, [], {}, sessionMemory))
+    const body = await res.json()
+
+    expect(evaluatedState?.pricingPreference).toEqual(expect.objectContaining({
+      intent: 'cheaper',
+      referencePricePerDay: 52000,
+    }))
+    expect(body.recommendations).toEqual([])
+    expect(getPrompt()).toContain('"newBackendSelectedRecommendations":[]')
+    expect(getPrompt()).not.toContain('expensive-one')
+  })
+
+  it('resolved reference + bigger creates attribute delta and reruns the Evaluation Engine', async () => {
+    mockExtract.mockResolvedValue({
+      referenceTarget: 'firstShownOption',
+      refinementIntent: { intent: 'bigger', sourceText: 'abból nagyobbat' },
+    })
+    let evaluatedState: ConversationState | undefined
+    mockEngineRecommendation('big-one', 'Big One', 46000, 7, state => {
+      evaluatedState = state
+    })
+    const getPrompt = mockRecommendationResponse('big-one')
+
+    const res = await POST(makeRequest('abból nagyobbat', baseState, [], {}, sessionMemory))
+    const body = await res.json()
+
+    expect(mockEvaluateCampers).toHaveBeenCalledTimes(1)
+    expect(evaluatedState?.attributePreferences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'beds', operator: 'gte', value: 7 }),
+      ]),
+    )
+    expect(body.recommendations.map((item: { slug: string }) => item.slug)).toEqual(['big-one'])
+    expect(getPrompt()).toContain('"stateDeltaSummary":["attributePreferences.beds=gte:7"]')
+  })
+
+  it('resolved reference + different excludes the referenced option before rerun', async () => {
+    mockExtract.mockResolvedValue({
+      referenceTarget: 'lastRecommendation',
+      refinementIntent: { intent: 'different', sourceText: 'mutass mást' },
+    })
+    let evaluatedState: ConversationState | undefined
+    mockEngineRecommendation('different-one', 'Different One', 38000, 2, state => {
+      evaluatedState = state
+    })
+    const getPrompt = mockRecommendationResponse('different-one')
+
+    await POST(makeRequest('mutass mást', baseState, [], {}, sessionMemory))
+
+    expect(mockEvaluateCampers).toHaveBeenCalledTimes(1)
+    expect(evaluatedState?.alreadyRecommendedSlugs).toEqual(
+      expect.arrayContaining(['hobby-t75hf', 'hymer-ayers-rock']),
+    )
+    expect(getPrompt()).toContain('"stateDeltaSummary":["alreadyRecommendedSlugs+=hymer-ayers-rock"]')
+  })
+
+  it('ambiguous reference + refinement does not rerun or choose a target', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationReference: { kind: 'feature', featureKey: 'solar_panel' },
+      refinementIntent: { intent: 'cheaper', sourceText: 'a napelemesből olcsóbbat' },
+    })
+    const ambiguousMemory: SessionMemory = {
+      ...sessionMemory,
+      shownOptions: [
+        sessionMemory.shownOptions![0],
+        { ...sessionMemory.shownOptions![1], featureKeys: ['solar_panel'] },
+      ],
+    }
+
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ reply: 'Melyikre gondolsz?', recommendations: [], links: [] }) } }],
+      })
+    })
+
+    const res = await POST(makeRequest('a napelemesből olcsóbbat', baseState, [], {}, ambiguousMemory))
+    const body = await res.json()
+
+    expect(mockEvaluateCampers).not.toHaveBeenCalled()
+    expect(body.updatedSessionMemory?.memoryEvents).toBeUndefined()
+    expect(body.recommendations).toEqual([])
+    expect(capturedSystemPrompt).toContain('REFINEMENT CONTEXT')
+    expect(capturedSystemPrompt).toContain('"referenceResolution":{"status":"ambiguous"')
+    expect(capturedSystemPrompt).toContain('"rerunTriggered":false')
+    expect(capturedSystemPrompt).toContain('"rerunSkippedReason":"ambiguous_reference"')
+    expect(capturedSystemPrompt).toContain('ask a short clarification')
+  })
+
+  it('not_found reference + refinement does not rerun or guess', async () => {
+    mockExtract.mockResolvedValue({
+      recommendationReference: { kind: 'feature', featureKey: 'bike_rack' },
+      refinementIntent: { intent: 'cheaper', sourceText: 'a biciklitartósból olcsóbbat' },
+    })
+
+    let capturedSystemPrompt = ''
+    mockGptCreate.mockImplementation((params: any) => {
+      const sys = params.messages.find((m: any) => m.role === 'system')
+      if (sys) capturedSystemPrompt = sys.content
+      return Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ reply: 'Nem találom egyértelműen.', recommendations: [], links: [] }) } }],
+      })
+    })
+
+    const res = await POST(makeRequest('a biciklitartósból olcsóbbat', baseState, [], {}, sessionMemory))
+    const body = await res.json()
+
+    expect(mockEvaluateCampers).not.toHaveBeenCalled()
+    expect(body.updatedSessionMemory?.memoryEvents).toBeUndefined()
+    expect(body.recommendations).toEqual([])
+    expect(capturedSystemPrompt).toContain('REFINEMENT CONTEXT')
+    expect(capturedSystemPrompt).toContain('"referenceResolution":{"status":"not_found"')
+    expect(capturedSystemPrompt).toContain('"rerunTriggered":false')
+    expect(capturedSystemPrompt).toContain('"rerunSkippedReason":"reference_not_found"')
+    expect(capturedSystemPrompt).toContain('could not be identified clearly')
+  })
+
+  it('legacy refinementPreference remains compatible with the state-driven pipeline', async () => {
+    mockExtract.mockResolvedValue({ refinementPreference: 'cheaper' })
+    let evaluatedState: ConversationState | undefined
+    mockEngineRecommendation('cheap-one', 'Cheap One', 30000, 2, state => {
+      evaluatedState = state
+    })
+    const getPrompt = mockRecommendationResponse('cheap-one')
+
+    const res = await POST(makeRequest('van olcsóbb?', baseState, [], {}, sessionMemory))
+    const body = await res.json()
+
+    expect(evaluatedState?.refinementIntent).toEqual(expect.objectContaining({ intent: 'cheaper' }))
+    expect(evaluatedState?.pricingPreference).toEqual(expect.objectContaining({ intent: 'cheaper' }))
+    expect(body.updatedState?.refinementPreference).toBeUndefined()
+    expect(body.updatedState?.refinementIntent).toEqual(expect.objectContaining({ intent: 'cheaper' }))
+    expect(getPrompt()).toContain('REFINEMENT CONTEXT')
+    expect(getPrompt()).toContain('"refinementIntent":{"intent":"cheaper","sourceText":"van olcsóbb?"')
+  })
+
+  it('GPT cannot recommend outside the engine-selected allowed slugs after refinement rerun', async () => {
+    mockExtract.mockResolvedValue({
+      referenceTarget: 'lastRecommendation',
+      refinementIntent: { intent: 'cheaper', sourceText: 'abból olcsóbbat' },
+    })
+    mockEngineRecommendation('cheap-one', 'Cheap One', 30000)
+    mockRecommendationResponse('hymer-ayers-rock')
+
+    const res = await POST(makeRequest('abból olcsóbbat', baseState, [], {}, sessionMemory))
+    const body = await res.json()
+
+    expect(mockEvaluateCampers).toHaveBeenCalledTimes(1)
+    expect(body.recommendations).toEqual([])
   })
 })

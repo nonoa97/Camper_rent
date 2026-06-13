@@ -33,6 +33,10 @@ function hasUsableFlexibleCampingType(state: ConversationState): boolean {
   return campingTypes.length > 0 && campingTypes.length <= 2
 }
 
+export function hasWildCampingCapability(state: Pick<ConversationState, 'capabilityPreferences'>): boolean {
+  return !!state.capabilityPreferences?.some(preference => preference.key === 'wild_camping')
+}
+
 export function getNextMissingQuestion(state: ConversationState): NextQuestion | null {
   const skipped = new Set(state.skippedChecklist ?? [])
   const groupTrip = isGroupTrip(state)
@@ -40,7 +44,9 @@ export function getNextMissingQuestion(state: ConversationState): NextQuestion |
   const timingResolved = state.month || state.startDate || state.earliestAvailable || hasUsableFlexibleMonths(state)
   if (!timingResolved && !skipped.has('month')) {
     return {
-      question: groupTrip ? 'Mikor szeretnétek menni?' : 'Mikor mennél?',
+      question: groupTrip
+        ? 'Kezdjük az időponttal: mikorra tervezitek az utat?'
+        : 'Kezdjük az időponttal: mikorra tervezed az utat?',
       field: 'month',
     }
   }
@@ -48,26 +54,33 @@ export function getNextMissingQuestion(state: ConversationState): NextQuestion |
   const hasDuration = state.durationDays || (state.startDate && state.endDate) || hasUsableFlexibleDuration(state)
   if (!hasDuration && !skipped.has('durationDays')) {
     return {
-      question: groupTrip ? 'Hány napra terveztek?' : 'Hány napra tervezed?',
+      question: groupTrip
+        ? 'Oké, és nagyjából hány napra vinnétek el?'
+        : 'Oké, és nagyjából hány napra vinnéd el?',
       field: 'durationDays',
     }
   }
 
   if (!state.passengers && !hasUsableFlexiblePassengers(state) && !skipped.has('passengers')) {
-    return { question: 'Hány fővel utaznál?', field: 'passengers' }
+    return { question: 'Rendben, hányan utaznátok összesen?', field: 'passengers' }
   }
 
-  if (!state.campingType && !hasUsableFlexibleCampingType(state) && !skipped.has('campingType')) {
+  if (
+    !state.campingType &&
+    !hasWildCampingCapability(state) &&
+    !hasUsableFlexibleCampingType(state) &&
+    !skipped.has('campingType')
+  ) {
     return {
       question: groupTrip
-        ? 'Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?'
-        : 'Inkább vadkempingeznél, vagy kempinghelyen állnál meg?',
+        ? 'Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?'
+        : 'Inkább kempinghelyeken állnál meg, vagy olyan autót keressek, ami vadkempinghez is jó?',
       field: 'campingType',
     }
   }
 
   if (!state.extraRequirementsAsked && !skipped.has('extraRequirements')) {
-    return { question: 'Van még valami szempont vagy igény, amit figyelembe vegyek?', field: 'extraRequirements' }
+    return { question: 'Van még bármi, ami fontos lenne az autóban vagy az utazáshoz?', field: 'extraRequirements' }
   }
 
   return null

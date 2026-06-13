@@ -109,7 +109,7 @@ export default function ProfileModal({ user, onClose, onLogout }: Props) {
                   type="text"
                   value={form.name ?? ''}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
+                  className="w-full border border-[#e6e4df] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
                   placeholder="Teljes neved"
                 />
               </div>
@@ -119,7 +119,7 @@ export default function ProfileModal({ user, onClose, onLogout }: Props) {
                   type="tel"
                   value={form.phone ?? ''}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
+                  className="w-full border border-[#e6e4df] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
                   placeholder="+36 30 000 0000"
                 />
               </div>
@@ -127,14 +127,14 @@ export default function ProfileModal({ user, onClose, onLogout }: Props) {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-white transition-opacity"
+                  className="flex-1 py-2 rounded-full text-sm font-semibold text-white transition-opacity"
                   style={{ background: '#1a3a2a', opacity: saving ? 0.6 : 1 }}
                 >
                   {saving ? 'Mentés...' : 'Mentés'}
                 </button>
                 <button
                   onClick={() => { setEditing(false); setForm(profile) }}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+                  className="flex-1 py-2 rounded-full text-sm font-semibold text-gray-600 border border-[#e6e4df] hover:bg-gray-50 transition-colors"
                 >
                   Mégsem
                 </button>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import PageHeader from '@/components/layout/PageHeader'
 import CtaBanner from '@/components/sections/CtaBanner'
 
 const FAQS = [
@@ -24,8 +23,8 @@ function FaqItem({ icon, q, a }: { icon: string; q: string; a: string }) {
   return (
     <div className={`border rounded-xl overflow-hidden transition-all duration-200 group
       ${open
-        ? 'border-[#d0ccc4] shadow-md bg-white'
-        : 'border-[#e8e8e4] bg-white hover:border-[#c8c4bc] hover:shadow-sm'
+        ? 'border-[#d5d3d0] shadow-md bg-white'
+        : 'border-[#e6e4df] bg-white hover:border-[#d5d3d0] hover:shadow-sm'
       }`}
     >
       <button
@@ -64,7 +63,6 @@ function FaqItem({ icon, q, a }: { icon: string; q: string; a: string }) {
 export default function GyikPage() {
   return (
     <>
-      <PageHeader />
 
       <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-4">
         <div className="max-w-[680px]">

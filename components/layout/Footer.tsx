@@ -130,7 +130,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="max-w-[1080px] mx-auto px-4 md:px-10 pb-4 text-center text-[11px] text-[#888] tracking-wide border-t border-[#e0e0de] pt-3">
+      <div className="max-w-[1080px] mx-auto px-4 md:px-10 pb-4 text-center text-[11px] text-[#888] tracking-wide border-t border-[#e6e4df] pt-3">
         © {new Date().getFullYear()} VanLife Europe. Minden jog fenntartva.
       </div>
 

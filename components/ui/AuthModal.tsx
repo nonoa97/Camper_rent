@@ -9,6 +9,7 @@ type Provider = 'google' | 'facebook' | 'twitter' | 'x'
 interface Props {
   initialView?: View
   onClose: () => void
+  afterLoginUrl?: string
 }
 
 const PROVIDERS: { id: Provider; label: string; icon: React.ReactNode; bg: string; color: string; border: string }[] = [
@@ -53,7 +54,7 @@ const PROVIDERS: { id: Provider; label: string; icon: React.ReactNode; bg: strin
   },
 ]
 
-export default function AuthModal({ initialView = 'login', onClose }: Props) {
+export default function AuthModal({ initialView = 'login', onClose, afterLoginUrl }: Props) {
   const [view, setView] = useState<View>(initialView)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -98,10 +99,11 @@ export default function AuthModal({ initialView = 'login', onClose }: Props) {
   async function handleOAuth(provider: Provider) {
     setOauthLoading(provider)
     setError(null)
+    const next = afterLoginUrl ? `?next=${encodeURIComponent(afterLoginUrl)}` : ''
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback${next}`,
       },
     })
     if (error) {
@@ -208,7 +210,7 @@ export default function AuthModal({ initialView = 'login', onClose }: Props) {
                   onChange={e => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
+                  className="w-full border border-[#e6e4df] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
                 />
                 <input
                   type="password"
@@ -218,7 +220,7 @@ export default function AuthModal({ initialView = 'login', onClose }: Props) {
                   required
                   autoComplete={view === 'login' ? 'current-password' : 'new-password'}
                   minLength={view === 'register' ? 6 : undefined}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
+                  className="w-full border border-[#e6e4df] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1a3a2a] transition-colors"
                 />
 
                 {error && (
@@ -228,7 +230,7 @@ export default function AuthModal({ initialView = 'login', onClose }: Props) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity mt-1"
+                  className="w-full py-2.5 rounded-full text-sm font-semibold text-white transition-opacity mt-1"
                   style={{ background: '#1a3a2a', opacity: loading ? 0.6 : 1 }}
                 >
                   {loading ? '...' : view === 'login' ? 'Belépés' : 'Fiók létrehozása'}

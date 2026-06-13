@@ -20,12 +20,12 @@ describe('Flow 1 – empty state starts checklist', () => {
 
   it('uses singular wording before passenger count is known', () => {
     const q = getNextMissingQuestion({ intent: 'recommendation' })
-    expect(q?.question).toBe('Mikor mennél?')
+    expect(q?.question).toBe('Kezdjük az időponttal: mikorra tervezed az utat?')
   })
 
   it('uses plural wording when passenger count already indicates a group', () => {
     const q = getNextMissingQuestion({ intent: 'recommendation', passengers: 2 })
-    expect(q?.question).toBe('Mikor szeretnétek menni?')
+    expect(q?.question).toBe('Kezdjük az időponttal: mikorra tervezitek az utat?')
   })
 })
 
@@ -38,14 +38,14 @@ describe('Flow 2 – durationDays extraction advances checklist', () => {
   it('asks durationDays when month is known but duration missing', () => {
     const q = getNextMissingQuestion(stateWithMonth)
     expect(q?.field).toBe('durationDays')
-    expect(q?.question).toBe('Hány napra tervezed?')
+    expect(q?.question).toBe('Oké, és nagyjából hány napra vinnéd el?')
   })
 
   it('advances to passengers after durationDays=4 is merged in', () => {
     const merged = mergeState(stateWithMonth, { durationDays: 4 })
     const q = getNextMissingQuestion(merged)
     expect(q?.field).toBe('passengers')
-    expect(q?.question).toBe('Hány fővel utaznál?')
+    expect(q?.question).toBe('Rendben, hányan utaznátok összesen?')
     expect(q?.field).not.toBe('durationDays') // regression guard
   })
 
@@ -69,19 +69,19 @@ describe('Flow 4 – ask_next_question mode blocks Supabase', () => {
     const q = getNextMissingQuestion({ month: '2026-07', durationDays: 4 })
     expect(q).not.toBeNull()
     expect(q?.field).toBe('passengers')
-    expect(q?.question).toBe('Hány fővel utaznál?')
+    expect(q?.question).toBe('Rendben, hányan utaznátok összesen?')
   })
 
   it('uses plural campingType wording after passengers > 1 is known', () => {
     const q = getNextMissingQuestion({ month: '2026-07', durationDays: 4, passengers: 2 })
     expect(q?.field).toBe('campingType')
-    expect(q?.question).toBe('Inkább vadkempingeznétek, vagy kempinghelyen állnátok meg?')
+    expect(q?.question).toBe('Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?')
   })
 
   it('uses singular campingType wording for solo trips', () => {
     const q = getNextMissingQuestion({ month: '2026-07', durationDays: 4, passengers: 1 })
     expect(q?.field).toBe('campingType')
-    expect(q?.question).toBe('Inkább vadkempingeznél, vagy kempinghelyen állnál meg?')
+    expect(q?.question).toBe('Inkább kempinghelyeken állnál meg, vagy olyan autót keressek, ami vadkempinghez is jó?')
   })
 
   it('checklist is complete when all required fields are set', () => {
@@ -99,7 +99,7 @@ describe('Flow 4 – ask_next_question mode blocks Supabase', () => {
   it('earliestAvailable skips month but still asks duration', () => {
     const q = getNextMissingQuestion({ earliestAvailable: true })
     expect(q?.field).toBe('durationDays')
-    expect(q?.question).toBe('Hány napra tervezed?')
+    expect(q?.question).toBe('Oké, és nagyjából hány napra vinnéd el?')
   })
 })
 
@@ -125,6 +125,33 @@ describe('mergeState', () => {
       { alreadyRecommendedSlugs: ['hobby-t75hf', 'vw-crafter'] },
     )
     expect(state.alreadyRecommendedSlugs).toEqual(['hobby-t75hf', 'vw-crafter'])
+  })
+
+  it('merges canonical refinementIntent as current state delta', () => {
+    const state = mergeState({}, {
+      refinementIntent: {
+        intent: 'keep_current',
+        targetReference: 'lastRecommendation',
+        sourceText: 'maradjunk ennél',
+      },
+    })
+
+    expect(state.refinementIntent).toEqual({
+      intent: 'keep_current',
+      targetReference: 'lastRecommendation',
+      sourceText: 'maradjunk ennél',
+    })
+  })
+
+  it('resets refinementIntent on the next turn unless explicitly updated', () => {
+    const state = mergeState({
+      refinementIntent: {
+        intent: 'cheaper',
+        sourceText: 'van olcsóbb?',
+      },
+    }, {})
+
+    expect(state.refinementIntent).toBeUndefined()
   })
 })
 describe('Regression - campingType is complete when camping_site is set', () => {

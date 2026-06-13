@@ -1,0 +1,118 @@
+{
+  "rejectedAliases": [
+    {
+      "phrase": "vadkemping",
+      "locale": "hu",
+      "owner": "capability",
+      "reason": "Usage style / camping intent, not concrete equipment."
+    },
+    {
+      "phrase": "vadkempingeznénk",
+      "locale": "hu",
+      "owner": "capability",
+      "reason": "Usage style / camping intent, not concrete equipment."
+    },
+    {
+      "phrase": "off-grid",
+      "locale": "hu",
+      "owner": "capability",
+      "reason": "Capability intent composed from multiple features."
+    },
+    {
+      "phrase": "off grid",
+      "locale": "en",
+      "owner": "capability",
+      "reason": "Capability intent composed from multiple features."
+    },
+    {
+      "phrase": "önellátó",
+      "locale": "hu",
+      "owner": "capability",
+      "reason": "Capability-like broad intent, not one feature."
+    },
+    {
+      "phrase": "onallo",
+      "locale": "hu",
+      "owner": "capability",
+      "reason": "Capability-like broad intent, not one feature."
+    },
+    {
+      "phrase": "home office",
+      "locale": "hu",
+      "owner": "capability",
+      "reason": "Remote-work usage goal, not one feature."
+    },
+    {
+      "phrase": "remote work",
+      "locale": "en",
+      "owner": "capability",
+      "reason": "Remote-work usage goal, not one feature."
+    },
+    {
+      "phrase": "automata",
+      "locale": "hu",
+      "owner": "attribute",
+      "reason": "Gearbox attribute, not equipment feature."
+    },
+    {
+      "phrase": "automata váltó",
+      "locale": "hu",
+      "owner": "attribute",
+      "reason": "Gearbox attribute, not equipment feature."
+    },
+    {
+      "phrase": "automatic transmission",
+      "locale": "en",
+      "owner": "attribute",
+      "reason": "Gearbox attribute, not equipment feature."
+    },
+    {
+      "phrase": "campervan",
+      "locale": "hu",
+      "owner": "attribute",
+      "reason": "Vehicle type attribute, not equipment feature."
+    },
+    {
+      "phrase": "alkóvos",
+      "locale": "hu",
+      "owner": "attribute",
+      "reason": "Vehicle type attribute, not equipment feature."
+    },
+    {
+      "phrase": "nagyobb",
+      "locale": "hu",
+      "owner": "attribute",
+      "reason": "Size/refinement intent, not equipment feature."
+    },
+    {
+      "phrase": "olcsóbb",
+      "locale": "hu",
+      "owner": "pricing",
+      "reason": "Pricing/refinement intent, not equipment feature."
+    },
+    {
+      "phrase": "budget",
+      "locale": "en",
+      "owner": "pricing",
+      "reason": "Pricing intent, not equipment feature."
+    },
+    {
+      "phrase": "kedvezmény",
+      "locale": "hu",
+      "owner": "pricing",
+      "reason": "Pricing/discount intent, not equipment feature."
+    },
+    {
+      "phrase": "kényelmes",
+      "locale": "hu",
+      "owner": "unmapped",
+      "reason": "Too broad to map to one feature safely."
+    },
+    {
+      "phrase": "jól felszerelt",
+      "locale": "hu",
+      "owner": "unmapped",
+      "reason": "Too broad to map to one feature safely."
+    }
+  ]
+}

@@ -29,6 +29,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+/logs/
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -44,3 +45,13 @@ next-env.d.ts
 .claude/
 
 .vercel
+
+# internal planning docs & redesign experiments (not part of the product)
+/docs/
+/redesign/
+/redesign-noir/
+/redesign-skandinav/
+
+# generated / snapshot artifacts
+/DB_SNAPSHOT.txt
+/scripts/test-summary.txt

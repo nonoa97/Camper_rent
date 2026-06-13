@@ -17,7 +17,7 @@ import type { CamperGearbox, CamperFuel, CamperType } from '@/lib/types'
 const CAMPER_TYPES: CamperType[] = ['Camper van', 'Alkóvos', 'Integrált', 'Félintegrált']
 
 // ── Types ─────────────────────────────────────────────────────
-interface DbFeature  { id: number; name: string; category_id: number | null; category_name: string | null }
+interface DbFeature  { id: number; key: string | null; name: string; category_id: number | null; category_name: string | null }
 
 interface AdminCamper {
   id: string
@@ -34,7 +34,6 @@ interface AdminCamper {
   type: CamperType | null
   gearbox: CamperGearbox | null
   fuel_type: CamperFuel | null
-  wild_camping_suitable: boolean | null
   beds: number | null
   feature_ids: number[]
 }
@@ -90,7 +89,6 @@ const BLANK: AdminCamper = {
   image_url: null, images: [], price_per_day: 25000,
   available: true, year: new Date().getFullYear(),
   type: null, gearbox: null, fuel_type: null,
-  wild_camping_suitable: null,
   beds: null, feature_ids: [],
 }
 
@@ -141,7 +139,7 @@ async function dbLoadCampers(): Promise<AdminCamper[]> {
       .from('campers')
       .select(`
         id, slug, name, description, overview_title, overview_body, image_url,
-        available, year, type, gearbox, fuel_type, wild_camping_suitable,
+        available, year, type, gearbox, fuel_type,
         beds,
         camper_features(feature_id),
         camper_images(url, sort_order)
@@ -167,7 +165,6 @@ async function dbLoadCampers(): Promise<AdminCamper[]> {
     type: r.type ?? null,
     gearbox: r.gearbox ?? null,
     fuel_type: r.fuel_type ?? null,
-    wild_camping_suitable: r.wild_camping_suitable ?? null,
     beds: r.beds ?? null,
     feature_ids: (r.camper_features ?? []).map((f: any) => Number(f.feature_id)),
   }))
@@ -583,15 +580,6 @@ function EditDrawer({
                   onChange={e => set('available', e.target.value === 'true')}>
                   <option value="true">Aktív — megjelenik a weboldalon</option>
                   <option value="false">Szünetel — rejtett, nem foglalható</option>
-                </select>
-              </div>
-              <div className="fg"><label className="fl">Vad táborozásra alkalmas</label>
-                <select className="fs"
-                  value={draft.wild_camping_suitable === null ? '' : String(draft.wild_camping_suitable)}
-                  onChange={e => set('wild_camping_suitable', e.target.value === '' ? null : e.target.value === 'true')}>
-                  <option value="">Nincs megadva</option>
-                  <option value="true">Igen</option>
-                  <option value="false">Nem</option>
                 </select>
               </div>
               {!isNew && (
@@ -1591,8 +1579,14 @@ function CampervansView() {
   useEffect(() => {
     Promise.all([
       dbLoadCampers(),
-      supabase.from('features').select('id, name, category_id, feature_categories(name)').order('sort_order').then(r =>
-        (r.data ?? []).map((f: any) => ({ id: f.id, name: f.name, category_id: f.category_id ?? null, category_name: f.feature_categories?.name ?? null }))
+      supabase.from('features').select('id, key, name, category_id, feature_categories(name)').order('sort_order').then(r =>
+        (r.data ?? []).map((f: any) => ({
+          id: f.id,
+          key: f.key ?? null,
+          name: f.name,
+          category_id: f.category_id ?? null,
+          category_name: f.feature_categories?.name ?? null,
+        }))
       ),
       supabase.from('bookings').select('id', { count: 'exact', head: true })
         .gte('start_date', new Date().toISOString().split('T')[0])
@@ -1634,7 +1628,6 @@ function CampervansView() {
       overview_title: draft.overview_title, overview_body: draft.overview_body,
       available: draft.available, year: draft.year,
       type: draft.type, gearbox: draft.gearbox, fuel_type: draft.fuel_type,
-      wild_camping_suitable: draft.wild_camping_suitable,
       beds: draft.beds,
       feature_ids: draft.feature_ids,
     })
@@ -1648,7 +1641,6 @@ function CampervansView() {
       overview_title: draft.overview_title, overview_body: draft.overview_body,
       available: draft.available, year: draft.year,
       type: draft.type, gearbox: draft.gearbox, fuel_type: draft.fuel_type,
-      wild_camping_suitable: draft.wild_camping_suitable,
       beds: draft.beds,
       feature_ids: draft.feature_ids,
     })

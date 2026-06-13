@@ -155,13 +155,23 @@ describe('validateGptOutput – allowedSlugs guardrail', () => {
     expect(result.recommendations).toHaveLength(2)
   })
 
-  it('empty allowedSlugs → all recommendations pass through (unrestricted)', () => {
+  it('empty allowedSlugs in recommend mode → no recommendations pass through', () => {
     const raw = JSON.stringify({
       reply: 'Ajánlom.',
       recommendations: [{ slug: 'anything', reason: 'ok' }],
       links: [],
     })
     const result = validateGptOutput(raw, new Set(), 'recommend')
+    expect(result.recommendations).toEqual([])
+  })
+
+  it('empty allowedSlugs remains unrestricted outside recommend mode', () => {
+    const raw = JSON.stringify({
+      reply: 'Elérhető.',
+      recommendations: [{ slug: 'anything', reason: 'ok' }],
+      links: [],
+    })
+    const result = validateGptOutput(raw, new Set(), 'availability')
     expect(result.recommendations).toHaveLength(1)
   })
 })

@@ -16,7 +16,7 @@ const DAYS = ['H','K','Sze','Cs','P','Szo','V']
 
 function isBooked(date: Date, bookings: BookingRange[]): boolean {
   const t = date.getTime()
-  return bookings.some(b => t >= b.start.getTime() && t <= b.end.getTime())
+  return bookings.some(b => t >= b.start.getTime() && t < b.end.getTime())
 }
 
 function sameDay(a: Date, b: Date) {
@@ -32,7 +32,11 @@ function isRangeStart(date: Date, bookings: BookingRange[]) {
 }
 
 function isRangeEnd(date: Date, bookings: BookingRange[]) {
-  return bookings.some(b => sameDay(date, b.end))
+  return bookings.some(b => {
+    const lastBooked = new Date(b.end)
+    lastBooked.setDate(lastBooked.getDate() - 1)
+    return sameDay(date, lastBooked)
+  })
 }
 
 function MonthGrid({ year, month, bookings }: { year: number; month: number; bookings: BookingRange[] }) {
@@ -114,7 +118,7 @@ export default function AvailabilityCalendar({ camperSlug }: { camperSlug: strin
         .select('start_date, end_date, campers!inner(slug)')
         .eq('campers.slug', camperSlug)
         .eq('status', 'confirmed')
-        .gte('end_date', today.toISOString().split('T')[0])
+        .gt('end_date', today.toISOString().split('T')[0])
 
       if (data) {
         setBookings(data.map((b: any) => ({
@@ -138,13 +142,13 @@ export default function AvailabilityCalendar({ camperSlug }: { camperSlug: strin
           <button
             onClick={() => setOffset(o => Math.max(0, o - 1))}
             disabled={offset === 0}
-            className="w-8 h-8 rounded-full border border-[#ece9e4] flex items-center justify-center text-lg text-[#555] hover:border-[#aaa] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className="w-8 h-8 rounded-full border border-[#e6e4df] flex items-center justify-center text-lg text-[#555] hover:border-[#aaa] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           >
             ‹
           </button>
           <button
             onClick={() => setOffset(o => o + 1)}
-            className="w-8 h-8 rounded-full border border-[#ece9e4] flex items-center justify-center text-lg text-[#555] hover:border-[#aaa] transition-colors"
+            className="w-8 h-8 rounded-full border border-[#e6e4df] flex items-center justify-center text-lg text-[#555] hover:border-[#aaa] transition-colors"
           >
             ›
           </button>
@@ -158,7 +162,7 @@ export default function AvailabilityCalendar({ camperSlug }: { camperSlug: strin
         </div>
       </div>
 
-      <div className="flex gap-6 mt-6 pt-5 border-t border-[#ece9e4]">
+      <div className="flex gap-6 mt-6 pt-5 border-t border-[#e6e4df]">
         <div className="flex items-center gap-2 text-xs text-[#777]">
           <span className="w-3.5 h-3.5 rounded-sm bg-white border border-[#ddd] flex-shrink-0" />
           Szabad

@@ -1,0 +1,205 @@
+[
+  {
+    "capabilityKey": "wild_camping",
+    "locale": "hu",
+    "aliases": [
+      "vadkemping",
+      "vadkempingeznenk",
+      "vadkempingezes",
+      "kempingen kivul",
+      "kempingen kivul allnank meg",
+      "kempingen kivul szeretnenk megallni",
+      "nem kempingben allnank meg"
+    ],
+    "ambiguousAliases": [
+      "szabadon allnank meg",
+      "barhol megallnank"
+    ]
+  },
+  {
+    "capabilityKey": "wild_camping",
+    "locale": "en",
+    "aliases": [
+      "wild camping",
+      "wild camp",
+      "outside campsites",
+      "camp outside campsites",
+      "park outside campsites"
+    ],
+    "ambiguousAliases": [
+      "free camping",
+      "camp anywhere"
+    ]
+  },
+  {
+    "capabilityKey": "off_grid",
+    "locale": "hu",
+    "aliases": [
+      "off grid",
+      "off-grid",
+      "onellato",
+      "onellato legyen",
+      "aram nelkul is birja",
+      "aram nelkul is hasznalnank",
+      "tavolabb allnank meg"
+    ],
+    "ambiguousAliases": [
+      "onalloan hasznalnank",
+      "civilizaciotol tavol"
+    ]
+  },
+  {
+    "capabilityKey": "off_grid",
+    "locale": "en",
+    "aliases": [
+      "off grid",
+      "off-grid",
+      "self sufficient",
+      "self contained",
+      "without hookups",
+      "away from hookups"
+    ],
+    "ambiguousAliases": [
+      "remote places",
+      "independent use"
+    ]
+  },
+  {
+    "capabilityKey": "remote_work",
+    "locale": "hu",
+    "aliases": [
+      "dolgoznek utkozben",
+      "dolgoznank utkozben",
+      "home office utkozben",
+      "tavmunkara",
+      "munka utkozben",
+      "laptoprol dolgoznek"
+    ],
+    "ambiguousAliases": [
+      "online lennek",
+      "internet kellene"
+    ]
+  },
+  {
+    "capabilityKey": "remote_work",
+    "locale": "en",
+    "aliases": [
+      "work remotely",
+      "remote work",
+      "work on the road",
+      "home office on the road",
+      "work from the camper",
+      "laptop work"
+    ],
+    "ambiguousAliases": [
+      "need internet",
+      "stay online"
+    ]
+  },
+  {
+    "capabilityKey": "winter_use",
+    "locale": "hu",
+    "aliases": [
+      "telen mennénk",
+      "telen mennenk",
+      "teli tura",
+      "hideg idoben",
+      "hidegben is hasznalnank",
+      "sieleshez",
+      "sielni mennénk",
+      "sielni mennenk"
+    ],
+    "ambiguousAliases": [
+      "futes fontos",
+      "meleg legyen"
+    ]
+  },
+  {
+    "capabilityKey": "winter_use",
+    "locale": "en",
+    "aliases": [
+      "winter use",
+      "winter trip",
+      "cold weather",
+      "use in cold weather",
+      "ski trip",
+      "for skiing"
+    ],
+    "ambiguousAliases": [
+      "need heating",
+      "warm inside"
+    ]
+  },
+  {
+    "capabilityKey": "bike_transport",
+    "locale": "hu",
+    "aliases": [
+      "bringat vinnenk",
+      "bringat vinnénk",
+      "bringa",
+      "bringat",
+      "bringát",
+      "bringak",
+      "bringák",
+      "biciklit vinnenk",
+      "biciklit vinnénk",
+      "bicikli",
+      "biciklit",
+      "kerekpart vinnenk",
+      "kerekpart vinnénk",
+      "kerekpar",
+      "kerékpár",
+      "kerekpart",
+      "kerékpárt",
+      "bringazasra"
+    ],
+    "ambiguousAliases": [
+      "sportfelszerelest vinnenk"
+    ]
+  },
+  {
+    "capabilityKey": "bike_transport",
+    "locale": "en",
+    "aliases": [
+      "bring bikes",
+      "take bikes",
+      "bike transport",
+      "carry bicycles",
+      "cycling trip"
+    ],
+    "ambiguousAliases": [
+      "sports equipment"
+    ]
+  },
+  {
+    "capabilityKey": "pet_travel",
+    "locale": "hu",
+    "aliases": [
+      "kutyaval mennenk",
+      "kutyaval mennénk",
+      "kisallattal mennenk",
+      "kisallattal mennénk",
+      "allattal utaznank",
+      "haziallatot vinnénk",
+      "haziallatot vinnenk"
+    ],
+    "ambiguousAliases": [
+      "csaladbarat legyen"
+    ]
+  },
+  {
+    "capabilityKey": "pet_travel",
+    "locale": "en",
+    "aliases": [
+      "travel with a dog",
+      "bring a dog",
+      "pet travel",
+      "pet friendly trip",
+      "bring pets",
+      "travel with pets"
+    ],
+    "ambiguousAliases": [
+      "family friendly"
+    ]
+  }
+]

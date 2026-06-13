@@ -1,5 +1,4 @@
 import Image from 'next/image'
-import PageHeader from '@/components/layout/PageHeader'
 import CtaBanner from '@/components/sections/CtaBanner'
 import StatsBanner from '@/components/sections/StatsBanner'
 
@@ -24,7 +23,6 @@ const VALUES = [
 export default function RolunkPage() {
   return (
     <>
-      <PageHeader />
 
       {/* Intro */}
       <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-start">
@@ -41,7 +39,7 @@ export default function RolunkPage() {
         </div>
       </section>
 
-      <div className="border-t border-[#eeeeec] max-w-[1300px] mx-auto" />
+      <div className="border-t border-[#e6e4df] max-w-[1300px] mx-auto" />
 
       {/* Origin story */}
       <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center">
@@ -65,7 +63,7 @@ export default function RolunkPage() {
         </div>
       </section>
 
-      <div className="border-t border-[#eeeeec] max-w-[1300px] mx-auto" />
+      <div className="border-t border-[#e6e4df] max-w-[1300px] mx-auto" />
 
       {/* Fleet */}
       <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center">
@@ -89,7 +87,7 @@ export default function RolunkPage() {
         </div>
       </section>
 
-      <div className="border-t border-[#eeeeec] max-w-[1300px] mx-auto" />
+      <div className="border-t border-[#e6e4df] max-w-[1300px] mx-auto" />
 
       {/* Team */}
       <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center">
@@ -116,7 +114,7 @@ export default function RolunkPage() {
       <StatsBanner />
 
       {/* Values */}
-      <section className="bg-[#f7f7f5] py-10 md:py-16 px-4 md:px-10">
+      <section className="bg-[#f7f6f3] py-10 md:py-16 px-4 md:px-10">
         <div className="max-w-[1300px] mx-auto">
           <div className="text-center mb-10">
             <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Miért minket válassz</span>
@@ -124,7 +122,7 @@ export default function RolunkPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {VALUES.map(v => (
-              <div key={v.title} className="bg-white border border-[#ece9e4] rounded-2xl p-6 shadow-sm">
+              <div key={v.title} className="bg-white border border-[#e6e4df] rounded-2xl p-6 shadow-sm">
                 <div className="relative w-11 h-11 rounded-xl overflow-hidden mb-4">
                   <Image src={v.image} alt={v.title} fill className="object-cover" />
                 </div>

@@ -1,10 +1,40 @@
 import { AvailabilityCriteria, ConversationState, FlowState, SessionMemory } from './state'
 import { CamperResult } from './availability'
+import { BackendSelectedRecommendation, NoResultReasonSummary } from './evaluationContext'
+import type { RecommendationReferenceResult } from './recommendationReference'
+import type { RecommendationReferenceExplanation } from './recommendationReferenceExplainability'
+import type { ExplainabilityPresentationBundle } from './explainabilityPresentation'
 import { FaqItem } from './faq'
 import { CatalogEntry } from './catalog'
 import { ExtraItem } from './extras'
+import { buildConversationStateDebugSnapshot } from './stateDebugSnapshot'
 
 export type SearchType = 'specific' | 'earliest' | 'fallback_earliest' | 'branch'
+export type EvaluationStatus = 'success' | 'no_results' | 'failed_fallback_used'
+
+export interface RefinementContext {
+  refinementIntent: NonNullable<ConversationState['refinementIntent']>
+  sourceText: string
+  referencedTarget?: {
+    optionId?: string
+    camperSlug: string
+    camperName: string
+    shownIndex?: number
+  }
+  referenceResolution?: {
+    status: RecommendationReferenceResult['status']
+    reasons: string[]
+    candidateCount?: number
+  }
+  compatibility?: {
+    status: string
+    reasons: string[]
+  }
+  stateDeltaSummary: string[]
+  rerunTriggered: boolean
+  rerunSkippedReason?: 'ambiguous_reference' | 'reference_not_found' | 'not_recommend_mode'
+  newBackendSelectedRecommendations: string[]
+}
 
 export interface GptContext {
   state: ConversationState
@@ -30,6 +60,13 @@ export interface GptContext {
     criteria: AvailabilityCriteria
     resultCount: number
   }[]
+  evaluationStatus?: EvaluationStatus
+  backendSelectedRecommendations?: BackendSelectedRecommendation[]
+  noResultReasonSummary?: NoResultReasonSummary
+  recommendationReferenceResult?: RecommendationReferenceResult
+  recommendationReferenceExplanation?: RecommendationReferenceExplanation
+  refinementContext?: RefinementContext
+  explainabilityPresentation?: ExplainabilityPresentationBundle
 }
 
 export const SYSTEM_PROMPT = `Te a VanLife Europe digitális lakóautó-tanácsadója vagy.
@@ -40,8 +77,8 @@ ConversationState, FlowState and SessionMemory are the authoritative memory laye
 Conversation history is conversational context only.
 
 === CONTEXT = IGAZSÁGFORRÁS ===
-A CONTEXT az IGAZSÁGFORRÁS: state, FlowState, SessionMemory, camperResults, allowedCamperSlugs, availableSlots, FAQ data, search flags, refinementNote, nextQuestion.
-Csak a CONTEXT-ben lévő adatokat használd. Ha a backend már eldöntötte a nextQuestiont, allowedSlugsot vagy availableSlotsot, ne gondold újra.
+A CONTEXT az IGAZSÁGFORRÁS: state, FlowState, SessionMemory, backendSelectedRecommendations, camperResults, allowedCamperSlugs, availableSlots, FAQ data, search flags, refinementNote, nextQuestion.
+Csak a CONTEXT-ben lévő adatokat használd. Ha a backend már eldöntötte a nextQuestiont, backendSelectedRecommendations-t, allowedSlugsot vagy availableSlotsot, ne gondold újra.
 
 === NE TALÁLJ KI ===
 Tilos kitalálni: árat, felszereltséget, műszaki adatot, méretet, évjáratot, garázs magasságot, váltó típust, biztosítási feltételeket, biztosítás, kauciót, kaució, kedvezményeket, szabályokat, extrákat, elérhetőséget, foglalási feltételeket, jogosítvány szabályokat, jogosítvány szabályok, korhatárt, korhatár.
@@ -62,17 +99,18 @@ Ha a user módosít valamit, fogadd el röviden és menj tovább a backend álta
 === MODE CONTRACT ===
 
 mode = "ask_next_question":
-- A nextQuestion mező a pontos következő kérdés.
-- Röviden reagálj, majd tedd fel SZÓRÓL SZÓRA a nextQuestion szövegét.
-- Csak a nextQuestion kérdést tedd fel.
+- A nextQuestion mező mondja meg, milyen információ hiányzik.
+- Röviden reagálj a user előző válaszára, majd kérdezd meg ugyanazt az információt természetesen.
+- Átfogalmazhatod a nextQuestiont a beszélgetés kontextusához igazítva, de a jelentése nem változhat.
+- Csak ezt az egy információt kérdezd.
 - TILOS autót ajánlani.
 - TILOS elérhetőséget keresni vagy ígérni.
 - recommendations: [] kötelező.
 
 mode = "recommend":
-- Csak allowedCamperSlugs-ból ajánlhatsz.
+- Csak backendSelectedRecommendations / allowedCamperSlugs alapján ajánlhatsz.
 - Maximum 1-2 autót ajánlj.
-- Ha camperResults üres, mondd el őszintén, és segíts feltételt módosítani.
+- Ha backendSelectedRecommendations üres, mondd el őszintén a noResultReasonSummary alapján, és segíts feltételt módosítani.
 - Ha fallback vagy kért-hónap-nem-elérhető flag van a CONTEXT-ben, különítsd el a kért időszakot az alternatívától.
 - Ha branchSummaries van, a backend több rugalmas feltételágat keresett; kommunikáld röviden, mely ágakra néztünk rá.
 - Ha refinementNote van, arra reagálj.
@@ -134,6 +172,8 @@ Olyan mode-ban, ahol nincs ajánlás, recommendations legyen [].
 links csak releváns következő lépést tartalmazzon.`
 
 export function buildContextBlock(ctx: GptContext): string {
+  const stateSnapshot = buildConversationStateDebugSnapshot(ctx.state, ctx.flowState)
+
   if (ctx.mode === 'ask_next_question') {
     const skipNote = ctx.skipNote
       ? `\n[skipNote:\n"The user skipped or could not answer the previous field: ${ctx.state.lastAskedField}."]\n`
@@ -142,7 +182,8 @@ export function buildContextBlock(ctx: GptContext): string {
 mode: ask_next_question
 
 state:
-${JSON.stringify(ctx.state)}
+Projected state snapshot. Canonical fields are current user-need context; legacyCompatibility is compatibility/context only and not a recommendation truth source.
+${JSON.stringify(stateSnapshot)}
 
 flowState:
 ${JSON.stringify(ctx.flowState ?? {})}
@@ -156,10 +197,17 @@ nextQuestion:
 "${ctx.nextQuestion}"
 ${skipNote}
 requirements:
-- Ask ONLY the nextQuestion — do NOT add your own questions.
-- The reply must end with nextQuestion verbatim.
+- Ask ONLY for the same missing information as nextQuestion — do NOT add your own extra questions.
+- You may phrase the question naturally instead of repeating nextQuestion verbatim.
+- Use the known state to make the question conversational when useful.
+- End the reply with exactly one question.
 - Keep any preceding acknowledgment to 1 sentence maximum.
 - recommendations must be [].
+
+conversationStyleExamples:
+- month known, asking durationDays: "Oké, akkor ezzel az időszakkal számolok. Nagyjából hány napra vinnétek el?"
+- duration known, asking passengers: "Megvan, 22 nap. Rendben, hányan utaznátok összesen?"
+- passengers known, asking campingType: "Négy főre már tágasabb modelleket néznék. Inkább kempinghelyeken állnátok meg, vagy olyan autót keressek, ami vadkempinghez is jó?"
 --- END CONTEXT ---`
   }
 
@@ -265,7 +313,8 @@ requirements:
   parts.push(`=================================================================`)
   parts.push(``)
   parts.push(`ConversationState:`)
-  parts.push(JSON.stringify(ctx.state))
+  parts.push(`Projected state snapshot. Canonical fields are current user-need context; legacyCompatibility is compatibility/context only and not a recommendation truth source.`)
+  parts.push(JSON.stringify(stateSnapshot))
   parts.push(``)
   parts.push(`FlowState:`)
   parts.push(JSON.stringify(ctx.flowState ?? {}))
@@ -281,7 +330,7 @@ requirements:
   parts.push(`DATA SOURCES`)
   parts.push(`=================================================================`)
   parts.push(``)
-  parts.push(`availableData: ConversationState, FlowState, SessionMemory, camperResults, allowedCamperSlugs, searchFlags`)
+  parts.push(`availableData: ConversationState, FlowState, SessionMemory, backendSelectedRecommendations, camperResults, allowedCamperSlugs, searchFlags`)
   parts.push(``)
   parts.push(`This context DOES NOT contain FAQ information.`)
   parts.push(``)
@@ -303,11 +352,18 @@ requirements:
   if (ctx.state.durationDays) parts.push(`[durationDays: ${ctx.state.durationDays}]`)
   if (ctx.state.passengers) parts.push(`[passengers: ${ctx.state.passengers}]`)
   if (ctx.state.campingType) parts.push(`[campingType: ${ctx.state.campingType}]`)
-  if (ctx.state.extraRequirements?.length) {
-    parts.push(`[hardRequirements: ${ctx.state.extraRequirements.join(', ')}]`)
+  if (
+    stateSnapshot.canonicalPreferences.counts.featurePreferences > 0 ||
+    stateSnapshot.canonicalPreferences.counts.attributePreferences > 0 ||
+    stateSnapshot.canonicalPreferences.counts.capabilityPreferences > 0 ||
+    stateSnapshot.canonicalPreferences.counts.unmappedPreferences > 0 ||
+    stateSnapshot.canonicalPreferences.counts.ambiguousPreferences > 0 ||
+    stateSnapshot.canonicalPreferences.pricingPreference
+  ) {
+    parts.push(`[canonicalPreferences: ${JSON.stringify(stateSnapshot.canonicalPreferences)}]`)
   }
-  if (ctx.state.softPreferences?.length) {
-    parts.push(`[softPreferences: ${ctx.state.softPreferences.join(', ')}]`)
+  if (stateSnapshot.legacyCompatibility.fieldsPresent.length) {
+    parts.push(`[legacyCompatibilityContext: ${JSON.stringify(stateSnapshot.legacyCompatibility)}]`)
   }
   parts.push(``)
 
@@ -329,6 +385,57 @@ requirements:
   if (ctx.shouldSummarize) parts.push(`[shouldSummarize: true]`)
   parts.push(``)
 
+  if ((ctx.recommendationReferenceExplanation || ctx.recommendationReferenceResult) && !ctx.refinementContext) {
+    parts.push(`=================================================================`)
+    parts.push(`RECOMMENDATION REFERENCE RESOLUTION`)
+    parts.push(`=================================================================`)
+    parts.push(``)
+    parts.push(`The backend resolved the user's reference to a previously shown recommendation.`)
+    parts.push(`This is reference context only. Do not treat memory as a recommendation truth source.`)
+    if (ctx.recommendationReferenceExplanation) {
+      parts.push(`recommendationReferenceExplanation:`)
+      parts.push(JSON.stringify(ctx.recommendationReferenceExplanation))
+    } else {
+      parts.push(`recommendationReferenceResult:`)
+      parts.push(JSON.stringify(ctx.recommendationReferenceResult))
+    }
+    parts.push(``)
+    parts.push(`If status is ambiguous, ask a short clarification and do not choose a candidate.`)
+    parts.push(`If status is not_found, say that the previous option could not be identified clearly.`)
+    parts.push(`If compatibility is needs_recheck or stale, mention that the option was under earlier/different conditions.`)
+    parts.push(``)
+  }
+
+  if (ctx.refinementContext) {
+    parts.push(`=================================================================`)
+    parts.push(`REFINEMENT CONTEXT`)
+    parts.push(`=================================================================`)
+    parts.push(``)
+    parts.push(`Backend-only communication context. This is not a recommendation truth source.`)
+    parts.push(`The GPT must not resolve ambiguous references, choose campers, or invent rerun results.`)
+    parts.push(`refinementContext:`)
+    parts.push(JSON.stringify(ctx.refinementContext))
+    parts.push(``)
+    parts.push(`Communication rules:`)
+    parts.push(`- If rerunTriggered is true, only communicate newBackendSelectedRecommendations / backendSelectedRecommendations.`)
+    parts.push(`- If referenceResolution.status is ambiguous, ask a short clarification and do not choose a candidate.`)
+    parts.push(`- If referenceResolution.status is not_found, say the previous option could not be identified clearly.`)
+    parts.push(`- If compatibility is needs_recheck or stale, mention that the referenced option was under earlier/different conditions.`)
+    parts.push(``)
+  }
+
+  if (ctx.explainabilityPresentation) {
+    parts.push(`=================================================================`)
+    parts.push(`EXPLAINABILITY PRESENTATION`)
+    parts.push(`=================================================================`)
+    parts.push(``)
+    parts.push(`Backend-owned explanation context. This is presentation support only, not a recommendation truth source.`)
+    parts.push(`Use only safeForGpt explanation items for wording. Do not choose, rank, replace, or add campers from this block.`)
+    parts.push(`explainabilityPresentation:`)
+    parts.push(JSON.stringify(ctx.explainabilityPresentation))
+    parts.push(``)
+  }
+
   // CONVERSATION MEMORY
   parts.push(`=================================================================`)
   parts.push(`CONVERSATION MEMORY`)
@@ -341,6 +448,7 @@ requirements:
   }
   parts.push(``)
   parts.push(`Use this memory for wording and continuity. Deterministic reference resolution is handled by the backend.`)
+  parts.push(`Do not infer new preferences, selections, or recommendations from conversationMemory.`)
   parts.push(``)
 
   // SEARCH FLAGS
@@ -356,7 +464,12 @@ requirements:
   }
   if (ctx.searchType === 'earliest') parts.push(`[earliestSearch]`)
   if (ctx.searchType === 'branch') parts.push(`[branchSearch]`)
-  if (ctx.camperResults.length === 0) parts.push(`[noMatchingResults]`)
+  if (ctx.evaluationStatus) parts.push(`[evaluationStatus: ${ctx.evaluationStatus}]`)
+  if (ctx.mode === 'recommend' && ctx.backendSelectedRecommendations) {
+    if ((ctx.backendSelectedRecommendations?.length ?? 0) === 0) parts.push(`[noMatchingResults]`)
+  } else if (ctx.camperResults.length === 0) {
+    parts.push(`[noMatchingResults]`)
+  }
   parts.push(``)
 
   if (ctx.branchSummaries?.length) {
@@ -373,14 +486,42 @@ requirements:
     parts.push(``)
   }
 
+  if (ctx.mode === 'recommend' && ctx.backendSelectedRecommendations) {
+    parts.push(`=================================================================`)
+    parts.push(`BACKEND SELECTED RECOMMENDATIONS`)
+    parts.push(`=================================================================`)
+    parts.push(``)
+    parts.push(`evaluationStatus: ${ctx.evaluationStatus ?? 'success'}`)
+    parts.push(`These recommendations were selected by backend evaluation logic.`)
+    parts.push(`Do not rank, replace, or add campers. Only communicate these options.`)
+    parts.push(`backendSelectedRecommendations:`)
+    if ((ctx.backendSelectedRecommendations?.length ?? 0) > 0) {
+      ctx.backendSelectedRecommendations!.forEach(item => {
+        parts.push(`- slug: ${item.slug}`)
+        parts.push(`  name: ${item.name}`)
+        if (item.branchLabel) parts.push(`  branchLabel: ${item.branchLabel}`)
+        parts.push(`  pricing: ${JSON.stringify(item.pricing)}`)
+        parts.push(`  hardFailures: ${JSON.stringify(item.hardFailures)}`)
+        parts.push(`  scoreBreakdown: ${JSON.stringify(item.scoreBreakdown)}`)
+        if (item.discountOpportunity) {
+          parts.push(`  discountOpportunity: ${JSON.stringify(item.discountOpportunity)}`)
+        }
+      })
+    } else {
+      parts.push(`[]`)
+      parts.push(`noResultReasonSummary: ${JSON.stringify(ctx.noResultReasonSummary ?? null)}`)
+    }
+    parts.push(``)
+  }
+
   // REFINEMENT
-  if (ctx.refinementNote) {
+  if (ctx.refinementNote && !ctx.refinementContext) {
     parts.push(`=================================================================`)
     parts.push(`REFINEMENT`)
     parts.push(`=================================================================`)
     parts.push(``)
-    if (ctx.state.refinementPreference) {
-      parts.push(`[currentRefinement: ${ctx.state.refinementPreference}]`)
+    if (ctx.state.refinementIntent) {
+      parts.push(`[currentRefinementIntent: ${JSON.stringify(ctx.state.refinementIntent)}]`)
     }
     if (ctx.refinementNote.includes('HATÁRESET')) {
       parts.push(`[boundaryReached]`)
@@ -403,37 +544,37 @@ requirements:
   parts.push(``)
 
   // AVAILABLE CAMPERS
-  parts.push(`=================================================================`)
-  parts.push(`AVAILABLE CAMPERS`)
-  parts.push(`=================================================================`)
-  parts.push(``)
-  parts.push(`camperResults:`)
-  parts.push(``)
-  if (ctx.camperResults.length > 0) {
-    ctx.camperResults.forEach(c => {
-      const wildTag = c.wildCampingSuitable === true ? 'yes' : c.wildCampingSuitable === false ? 'no' : 'unknown'
-      parts.push(`- slug: ${c.slug}`)
-      parts.push(`  name: ${c.name}`)
-      parts.push(`  type: ${c.type ?? '?'}`)
-      parts.push(`  beds: ${c.beds ?? '?'}`)
-      parts.push(`  pricePerDay: ${c.price_per_day}`)
-      parts.push(`  wildCamping: ${wildTag}`)
-      parts.push(`  availableSlots:`)
-      if (c.availableSlots.length > 0) {
-        c.availableSlots.forEach(slot => {
-          parts.push(`    - from: ${slot.from}`)
-          parts.push(`      to: ${slot.to}`)
-          parts.push(`      days: ${slot.days}`)
-        })
-      } else {
-        parts.push(`    []`)
-      }
-      parts.push(``)
-    })
-  } else {
-    parts.push(`[if empty: No matching camper results.]`)
+  if (ctx.mode !== 'recommend' || !ctx.backendSelectedRecommendations) {
+    parts.push(`=================================================================`)
+    parts.push(`AVAILABLE CAMPERS`)
+    parts.push(`=================================================================`)
+    parts.push(``)
+    parts.push(`camperResults:`)
+    parts.push(``)
+    if (ctx.camperResults.length > 0) {
+      ctx.camperResults.forEach(c => {
+        parts.push(`- slug: ${c.slug}`)
+        parts.push(`  name: ${c.name}`)
+        parts.push(`  type: ${c.type ?? '?'}`)
+        parts.push(`  beds: ${c.beds ?? '?'}`)
+        parts.push(`  pricePerDay: ${c.price_per_day}`)
+        parts.push(`  availableSlots:`)
+        if (c.availableSlots.length > 0) {
+          c.availableSlots.forEach(slot => {
+            parts.push(`    - from: ${slot.from}`)
+            parts.push(`      to: ${slot.to}`)
+            parts.push(`      days: ${slot.days}`)
+          })
+        } else {
+          parts.push(`    []`)
+        }
+        parts.push(``)
+      })
+    } else {
+      parts.push(`[if empty: No matching camper results.]`)
+    }
+    parts.push(``)
   }
-  parts.push(``)
 
   // EXTRAS
   if (ctx.offerExtras) {
@@ -447,7 +588,6 @@ requirements:
     if (ctx.state.campingType) parts.push(`campingType: ${ctx.state.campingType}`)
     if (ctx.state.passengers) parts.push(`passengers: ${ctx.state.passengers}`)
     if (ctx.state.durationDays) parts.push(`durationDays: ${ctx.state.durationDays}`)
-    if (ctx.state.extraRequirements?.length) parts.push(`hardRequirements: ${ctx.state.extraRequirements.join(', ')}`)
     parts.push(``)
     parts.push(`Available extras:`)
     parts.push(``)
@@ -493,7 +633,7 @@ requirements:
   parts.push(`CONTEXT GUARANTEES`)
   parts.push(`=================================================================`)
   parts.push(``)
-  parts.push(`Only recommend campers from allowedCamperSlugs.`)
+  parts.push(`Only recommend campers from backendSelectedRecommendations / allowedCamperSlugs.`)
   parts.push(``)
   parts.push(`Only use data present in this context.`)
   parts.push(``)

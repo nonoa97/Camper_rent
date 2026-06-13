@@ -9,7 +9,7 @@ export interface CatalogEntry {
 
 export async function loadCatalogSummary(): Promise<CatalogEntry[]> {
   const [{ data: rows, error }, { data: priceRows }] = await Promise.all([
-    supabase.from('campers').select('id, camper_types!type_id(name)').eq('available', true),
+    supabase.from('campers').select('id, type').eq('available', true),
     supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak'),
   ])
 
@@ -20,7 +20,7 @@ export async function loadCatalogSummary(): Promise<CatalogEntry[]> {
 
   const byType: Record<string, number[]> = {}
   for (const r of rows as any[]) {
-    const type: string = (r.camper_types?.name as string) ?? 'Egyéb'
+    const type: string = (r.type as string) ?? 'Egyéb'
     if (!byType[type]) byType[type] = []
     byType[type].push((peakPrices[r.id] ?? 0) as number)
   }

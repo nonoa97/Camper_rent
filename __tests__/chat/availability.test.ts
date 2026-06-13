@@ -8,6 +8,16 @@ const defaultBookingRows = [{
   campers: { slug: 'hobby-t75hf' },
 }]
 let bookingRows = [...defaultBookingRows]
+const priceRows = [
+  { camper_id: 'hobby-id', season_id: 'low', price: 44000 },
+  { camper_id: 'hobby-id', season_id: 'pre', price: 58000 },
+  { camper_id: 'hobby-id', season_id: 'peak', price: 73000 },
+]
+const seasonRows = [
+  { id: 'low', from_md: '10-01', to_md: '04-30', sort_order: 1 },
+  { id: 'pre', from_md: '05-01', to_md: '06-30', sort_order: 2 },
+  { id: 'peak', from_md: '07-01', to_md: '09-30', sort_order: 3 },
+]
 
 function makeBuilder(table: string, result: { data: unknown; error?: unknown }) {
   const builder: Record<string, unknown> = {
@@ -25,6 +35,26 @@ function makeBuilder(table: string, result: { data: unknown; error?: unknown }) 
   return builder
 }
 
+function makeCamperPricesBuilder() {
+  const builder: Record<string, unknown> = {
+    data: priceRows,
+    error: null,
+  }
+  builder.select = (...args: unknown[]) => {
+    supabaseCalls.push({ table: 'camper_prices', method: 'select', args })
+    return builder
+  }
+  builder.eq = (...args: unknown[]) => {
+    supabaseCalls.push({ table: 'camper_prices', method: 'eq', args })
+    const [column, value] = args
+    if (column === 'season_id') {
+      builder.data = priceRows.filter(row => row.season_id === value)
+    }
+    return builder
+  }
+  return builder
+}
+
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
@@ -32,6 +62,7 @@ vi.mock('@/lib/supabase', () => ({
       if (table === 'campers') {
         return makeBuilder(table, {
           data: [{
+            id: 'hobby-id',
             slug: 'hobby-t75hf',
             name: 'Hobby T75HF',
             image_url: '/hobby.jpg',
@@ -42,6 +73,8 @@ vi.mock('@/lib/supabase', () => ({
           }],
         })
       }
+      if (table === 'camper_prices') return makeCamperPricesBuilder()
+      if (table === 'seasons') return makeBuilder(table, { data: seasonRows })
 
       return makeBuilder(table, {
         data: bookingRows,
@@ -50,7 +83,13 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 
-import { computeFreeSlots, pickSlots, searchAvailableCampers } from '@/lib/chat/availability'
+import {
+  computeFreeSlots,
+  getPreferredStartSearchWindow,
+  pickSlots,
+  pickSlotsForPreferredStartWindows,
+  searchAvailableCampers,
+} from '@/lib/chat/availability'
 import { buildContextBlock } from '@/lib/chat/prompts'
 
 beforeEach(() => {
@@ -85,6 +124,41 @@ describe('Availability - booking overlap and slot computation', () => {
     expect(picked).toEqual([
       { from: '2026-07-19', to: '2026-07-26', days: 8 },
     ])
+  })
+
+  it('preferredStartWindow filters by slot start, not by full rental containment', () => {
+    const picked = pickSlotsForPreferredStartWindows([
+      { from: '2026-09-25', to: '2026-10-20', days: 26 },
+    ], [{
+      startDate: '2026-09-21',
+      endDate: '2026-09-30',
+      precision: 'month_part',
+      part: 'late',
+      sourceText: 'szeptember vége',
+    }], 20)
+
+    expect(picked).toEqual([
+      { from: '2026-09-25', to: '2026-10-14', days: 20 },
+    ])
+  })
+
+  it('preferredStartWindow booking search window extends by requested duration', () => {
+    const searchWindow = getPreferredStartSearchWindow({
+      durationDays: 20,
+      flexibleCriteria: {
+        preferredStartWindows: [{
+          startDate: '2026-09-21',
+          endDate: '2026-09-30',
+          precision: 'month_part',
+          part: 'late',
+        }],
+      },
+    })
+
+    expect(searchWindow).toEqual({
+      from: '2026-09-21',
+      to: '2026-10-19',
+    })
   })
 
   it('Supabase bookings query uses overlap conditions, not month-contained filtering', async () => {
@@ -132,6 +206,61 @@ describe('Availability - booking overlap and slot computation', () => {
       { from: '2026-07-13', to: '2026-08-06', days: 25 },
     ])
   })
+
+  it('does not exclude campers from availability results because they were already recommended', async () => {
+    bookingRows = []
+
+    const results = await searchAvailableCampers({
+      intent: 'availability',
+      month: '2026-07',
+      durationDays: 8,
+      alreadyRecommendedSlugs: ['hobby-t75hf'],
+    })
+
+    expect(results.map(result => result.slug)).toContain('hobby-t75hf')
+  })
+
+  it('uses the price for the season matching the requested month', async () => {
+    bookingRows = []
+
+    const results = await searchAvailableCampers({
+      intent: 'availability',
+      month: '2026-07',
+      durationDays: 8,
+      passengers: 2,
+    })
+
+    expect(results[0].price_per_day).toBe(73000)
+    expect(supabaseCalls).toContainEqual({
+      table: 'camper_prices',
+      method: 'eq',
+      args: ['season_id', 'peak'],
+    })
+  })
+
+  it('uses the preferred start window start date to pick the availability price season', async () => {
+    bookingRows = []
+
+    const results = await searchAvailableCampers({
+      intent: 'availability',
+      durationDays: 8,
+      flexibleCriteria: {
+        preferredStartWindows: [{
+          startDate: '2026-06-25',
+          endDate: '2026-06-30',
+          precision: 'month_part',
+          part: 'late',
+        }],
+      },
+    })
+
+    expect(results[0].price_per_day).toBe(58000)
+    expect(supabaseCalls).toContainEqual({
+      table: 'camper_prices',
+      method: 'eq',
+      args: ['season_id', 'pre'],
+    })
+  })
 })
 
 describe('Availability - GPT context uses computed slots only', () => {
@@ -154,7 +283,6 @@ describe('Availability - GPT context uses computed slots only', () => {
         price_per_day: 35000,
         type: 'Alkovos',
         beds: 6,
-        wildCampingSuitable: true,
         availableSlots: [
           { from: '2026-07-01', to: '2026-07-08', days: 8 },
           { from: '2026-07-19', to: '2026-07-26', days: 8 },

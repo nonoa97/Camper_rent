@@ -11,7 +11,7 @@ interface Recommendation {
   text: string
   name: string
   image_url: string
-  price_per_day: number
+  price_per_day: number | null
   type: string | null
   beds: number | null
 }
@@ -20,7 +20,7 @@ interface AvailSlot {
   slug: string
   name: string
   image_url: string
-  price_per_day: number
+  price_per_day: number | null
   type: string | null
   beds: number | null
   from: string
@@ -43,7 +43,7 @@ interface Message {
 
 const INITIAL_MESSAGE: Message = {
   role: 'assistant',
-  content: 'Szia! Segítek megtalálni a tökéletes lakóautót vagy útvonalat. Mire van szükséged?',
+  content: 'Szia! Segítek megtalálni a tökéletes lakóautót. Mire van szükséged?',
 }
 
 const Bubble = ({ children, role }: { children: React.ReactNode; role: 'user' | 'assistant' }) => (
@@ -94,12 +94,12 @@ const CamperCard = ({
   image_url: string
   type: string | null
   beds: number | null
-  price_per_day: number
+  price_per_day: number | null
 }) => (
   <Link
     href={`/katalogus/${slug}`}
     className="group rounded-xl overflow-hidden flex flex-col"
-    style={{ border: '1px solid #e8e8e4' }}
+    style={{ border: '1px solid #e6e4df' }}
   >
     <div className="relative h-32 w-full">
       <Image
@@ -122,7 +122,9 @@ const CamperCard = ({
       </div>
       <div className="flex items-center justify-between mt-0.5">
         <span className="text-xs font-bold" style={{ color: '#1a3a2a' }}>
-          {price_per_day.toLocaleString('hu-HU')} Ft/nap
+          {typeof price_per_day === 'number' && price_per_day > 0
+            ? `${price_per_day.toLocaleString('hu-HU')} Ft/nap`
+            : 'Ár egyeztetés alapján'}
         </span>
         <span className="text-[10px] text-[#aaa] group-hover:text-[#1a3a2a] transition-colors">
           Megnézem →
@@ -151,6 +153,10 @@ const CalendarIcon = () => (
   </svg>
 )
 
+function createConversationId() {
+  return `chat_ui_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
 export default function ChatWidget() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
@@ -159,6 +165,7 @@ export default function ChatWidget() {
   const [chatState, setChatState] = useState<ConversationState>({})
   const [flowState, setFlowState] = useState<FlowState>({})
   const [sessionMemory, setSessionMemory] = useState<SessionMemory>({})
+  const [conversationId] = useState(createConversationId)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -180,6 +187,7 @@ export default function ChatWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          conversationId,
           message: text,
           history,
           state: chatState,
@@ -215,7 +223,7 @@ export default function ChatWidget() {
       {open && (
         <div
           className="w-[calc(100vw-2rem)] sm:w-[340px] h-[420px] sm:h-[560px] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-          style={{ background: '#fff', border: '1px solid #e8e8e4' }}
+          style={{ background: '#fff', border: '1px solid #e6e4df' }}
         >
           {/* Header */}
           <div

@@ -5,6 +5,7 @@ import { useSwipe } from '@/hooks/useSwipe'
 import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { resolveCurrentSeason, type SeasonRow } from '@/lib/season'
 
 interface CarouselCamper {
   id: string
@@ -15,25 +16,37 @@ interface CarouselCamper {
   beds: number | null
 }
 
+function getPrimaryImage(camper: any): string | null {
+  if (typeof camper.image_url === 'string' && camper.image_url.length > 0) return camper.image_url
+  const images = Array.isArray(camper.camper_images)
+    ? [...camper.camper_images].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    : []
+  return images.find((image: any) => typeof image.url === 'string' && image.url.length > 0)?.url ?? null
+}
+
 export default function CamperCarousel() {
   const [campers, setCampers] = useState<CarouselCamper[]>([])
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
     async function load() {
-      const [{ data }, { data: priceRows }] = await Promise.all([
-        supabase.from('campers').select('id, name, slug, image_url, beds').eq('available', true).order('created_at'),
-        supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak'),
+      const [{ data }, { data: priceRows }, { data: seasonRows }] = await Promise.all([
+        supabase.from('campers').select('id, name, slug, image_url, beds, camper_images(url, sort_order)').eq('available', true).order('created_at'),
+        supabase.from('camper_prices').select('camper_id, season_id, price'),
+        supabase.from('seasons').select('id, name, from_md, to_md'),
       ])
-      const peakPrices: Record<string, number> = {}
-      for (const p of (priceRows ?? []) as any[]) peakPrices[p.camper_id] = p.price
+      const { id: seasonId } = resolveCurrentSeason((seasonRows ?? []) as SeasonRow[])
+      const seasonPrices: Record<string, number> = {}
+      for (const p of (priceRows ?? []) as any[]) {
+        if (p.season_id === seasonId) seasonPrices[p.camper_id] = p.price
+      }
       if (data) {
         setCampers(data.map((c: any) => ({
           id: c.id,
           name: c.name,
           slug: c.slug,
-          price_per_day: peakPrices[c.id] ?? 0,
-          image_url: c.image_url,
+          price_per_day: seasonPrices[c.id] ?? 0,
+          image_url: getPrimaryImage(c),
           beds: c.beds ?? null,
         })))
       }
@@ -50,7 +63,7 @@ export default function CamperCarousel() {
   if (campers.length === 0) return null
 
   return (
-    <section className="py-8 md:py-14 px-4 md:px-10 bg-[#f5f5f5]">
+    <section className="py-8 md:py-14 px-4 md:px-10 bg-[#f7f6f3]">
       <div className="max-w-[1200px] mx-auto">
         <div className="text-center mb-9">
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2.5">Lakóautóink</span>

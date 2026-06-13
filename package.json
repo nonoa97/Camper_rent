@@ -8,9 +8,24 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "features:backfill": "node scripts/backfill-feature-keys.mjs",
+    "features:validate": "node scripts/validate-feature-keys.mjs",
+    "features:aliases:validate": "node scripts/validate-feature-aliases.mjs",
+    "features:aliases:coverage": "node scripts/audit-feature-alias-coverage.mjs",
+    "features:taxonomy:audit": "node scripts/audit-feature-taxonomy-governance.mjs",
+    "features:aliases:sync": "node scripts/sync-feature-aliases.mjs",
+    "capabilities:validate": "node scripts/validate-capabilities.mjs",
+    "capabilities:aliases:validate": "node scripts/validate-capability-aliases.mjs",
+    "capabilities:aliases:coverage": "node scripts/audit-capability-alias-coverage.mjs",
+    "capabilities:governance:audit": "node scripts/audit-capability-governance.mjs",
+    "extractor:contract:audit": "node scripts/audit-extractor-contract-governance.mjs",
+    "state:governance:audit": "node scripts/audit-conversation-state-governance.mjs",
+    "validate:chat-architecture": "node scripts/validate-chat-architecture.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.6.0",
+    "@stripe/stripe-js": "^9.8.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "framer-motion": "^12.40.0",
@@ -18,7 +33,9 @@
     "openai": "^6.42.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "resend": "^6.12.4",
+    "stripe": "^22.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

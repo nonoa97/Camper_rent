@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -16,6 +17,7 @@ const NAV = [
 ]
 
 export default function Header() {
+  const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -33,6 +35,7 @@ export default function Header() {
   async function handleLogout() {
     await supabase.auth.signOut()
     setProfileOpen(false)
+    router.push('/')
   }
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Fiók'

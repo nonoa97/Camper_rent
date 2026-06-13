@@ -71,7 +71,7 @@ export default function Testimonials() {
           {visible.map(({ review, colorIndex }, i) => (
             <div
               key={i}
-              className={`bg-white border border-[#ece9e4] rounded-2xl p-5 transition-all duration-500 flex flex-col shadow-sm ${i > 0 ? 'hidden md:flex' : ''}`}
+              className={`bg-white border border-[#e6e4df] rounded-2xl p-5 transition-all duration-500 flex flex-col shadow-sm ${i > 0 ? 'hidden md:flex' : ''}`}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
+// Next.js 16 renamed `middleware` → `proxy`. Runs before every matched request.
+// Two jobs:
+//   1) Refresh the Supabase auth session on ALL routes (rotates the access token
+//      and writes the updated cookies back — Server Components can't do this).
+//   2) Gate /admin/* routes behind the admin role.
 export async function proxy(request: NextRequest) {
-  // Pass-through for non-admin routes
-  if (!request.nextUrl.pathname.startsWith('/admin')) {
-    return NextResponse.next()
-  }
-
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -26,24 +26,37 @@ export async function proxy(request: NextRequest) {
     },
   )
 
+  // IMPORTANT: getUser() triggers the token refresh. Keep it directly after
+  // createServerClient — code in between can cause intermittent logouts.
   const { data: { user } } = await supabase.auth.getUser()
-  const role = user?.app_metadata?.role
-  const isAdmin = role === 'admin'
 
-  // Allow login page always
-  if (request.nextUrl.pathname.startsWith('/admin/login')) {
-    if (isAdmin) return NextResponse.redirect(new URL('/admin', request.url))
-    return response
-  }
+  // ── Admin route protection ──────────────────────────────────────────
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/admin')) {
+    const isAdmin = user?.app_metadata?.role === 'admin'
 
-  // Protect all other /admin/* routes
-  if (!isAdmin) {
-    return NextResponse.redirect(new URL('/admin/login', request.url))
+    if (path.startsWith('/admin/login')) {
+      // Already an admin → skip the login page
+      if (isAdmin) return NextResponse.redirect(new URL('/admin', request.url))
+      return response
+    }
+
+    // Any other /admin/* route requires the admin role
+    if (!isAdmin) {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
   }
 
   return response
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    /*
+     * Minden útvonalra fut, KIVÉVE a statikus tartalom:
+     * - _next/static, _next/image (build assetek)
+     * - favicon és képfájlok
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  ],
 }

@@ -1,0 +1,73 @@
+{
+  "bike_transport": [
+    { "featureKey": "bike_rack", "weight": 3 },
+    { "featureKey": "roof_rack", "weight": 2 },
+    { "featureKey": "garage", "weight": 1 }
+  ],
+  "off_grid": [
+    { "featureKey": "solar_panel", "weight": 3 },
+    { "featureKey": "leisure_battery", "weight": 3 },
+    { "featureKey": "lithium_battery", "weight": 3 },
+    { "featureKey": "freshwater_tank", "weight": 3 },
+    { "featureKey": "cassette_wc", "weight": 3 },
+    { "featureKey": "inverter", "weight": 2 },
+    { "featureKey": "socket_230v", "weight": 2 },
+    { "featureKey": "charge_controller", "weight": 2 },
+    { "featureKey": "gas_cylinder", "weight": 2 },
+    { "featureKey": "diesel_heater", "weight": 2 },
+    { "featureKey": "greywater_tank", "weight": 2 },
+    { "featureKey": "external_socket_230v", "weight": 1 },
+    { "featureKey": "water_level_indicator", "weight": 1 },
+    { "featureKey": "water_filter", "weight": 1 }
+  ],
+  "pet_travel": [
+    { "featureKey": "pet_friendly", "weight": 3 },
+    { "featureKey": "external_pet_anchor", "weight": 2 },
+    { "featureKey": "pet_barrier", "weight": 2 },
+    { "featureKey": "outdoor_shower", "weight": 2 },
+    { "featureKey": "freshwater_tank", "weight": 2 },
+    { "featureKey": "external_storage", "weight": 1 },
+    { "featureKey": "garage", "weight": 1 }
+  ],
+  "remote_work": [
+    { "featureKey": "wifi_router", "weight": 3 },
+    { "featureKey": "socket_230v", "weight": 3 },
+    { "featureKey": "lithium_battery", "weight": 3 },
+    { "featureKey": "inverter", "weight": 2 },
+    { "featureKey": "leisure_battery", "weight": 2 },
+    { "featureKey": "solar_panel", "weight": 2 },
+    { "featureKey": "swivel_seats", "weight": 2 },
+    { "featureKey": "camping_table", "weight": 2 },
+    { "featureKey": "usb_charger", "weight": 1 },
+    { "featureKey": "usb_c_charger", "weight": 1 }
+  ],
+  "wild_camping": [
+    { "featureKey": "solar_panel", "weight": 3 },
+    { "featureKey": "leisure_battery", "weight": 3 },
+    { "featureKey": "lithium_battery", "weight": 3 },
+    { "featureKey": "freshwater_tank", "weight": 3 },
+    { "featureKey": "cassette_wc", "weight": 3 },
+    { "featureKey": "parking_heater", "weight": 2 },
+    { "featureKey": "shower", "weight": 2 },
+    { "featureKey": "inverter", "weight": 2 },
+    { "featureKey": "charge_controller", "weight": 2 },
+    { "featureKey": "gas_cylinder", "weight": 2 },
+    { "featureKey": "diesel_heater", "weight": 2 },
+    { "featureKey": "gas_heater", "weight": 2 },
+    { "featureKey": "greywater_tank", "weight": 2 },
+    { "featureKey": "water_filter", "weight": 2 },
+    { "featureKey": "outdoor_shower", "weight": 1 },
+    { "featureKey": "water_level_indicator", "weight": 1 },
+    { "featureKey": "gps_tracker", "weight": 1 }
+  ],
+  "winter_use": [
+    { "featureKey": "parking_heater", "weight": 3 },
+    { "featureKey": "diesel_heater", "weight": 3 },
+    { "featureKey": "living_area_ac", "weight": 2 },
+    { "featureKey": "blackout_blinds", "weight": 2 },
+    { "featureKey": "lithium_battery", "weight": 2 },
+    { "featureKey": "gas_cylinder", "weight": 2 },
+    { "featureKey": "gas_heater", "weight": 2 },
+    { "featureKey": "underfloor_heating", "weight": 2 }
+  ]
+}

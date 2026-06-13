@@ -25,7 +25,7 @@ export default function Hero() {
         </p>
         <div className="hidden md:flex md:max-w-xl md:justify-end">
           <Link href="/fedezd-fel">
-            <Button variant="dark" className="font-semibold px-10 py-5 text-base rounded-lg tracking-wide hover:shadow-lg transition-shadow">
+            <Button variant="dark" className="font-semibold px-10 py-5 text-base tracking-wide hover:shadow-lg transition-shadow">
               Kezdd el a kalandot →
             </Button>
           </Link>
@@ -34,7 +34,7 @@ export default function Hero() {
 
       <div className="absolute bottom-8 left-6 z-10 md:hidden">
         <Link href="/fedezd-fel">
-          <Button variant="dark" className="font-semibold px-7 py-3.5 text-sm rounded-lg tracking-wide hover:shadow-lg transition-shadow">
+          <Button variant="dark" className="font-semibold px-7 py-3.5 text-sm tracking-wide hover:shadow-lg transition-shadow">
             Kezdd el a kalandot →
           </Button>
         </Link>

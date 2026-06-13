@@ -4,6 +4,7 @@ export type CamperType = 'Camper van' | 'Alkóvos' | 'Integrált' | 'Félintegr�
 
 export interface Feature {
   id: number
+  key?: string | null
   name: string
   icon?: string
 }
@@ -25,7 +26,6 @@ export interface Camper {
   gearbox?: CamperGearbox | null
   fuel_type?: CamperFuel | null
   year?: number | null
-  wild_camping_suitable?: boolean | null
 }
 
 export interface Trip {

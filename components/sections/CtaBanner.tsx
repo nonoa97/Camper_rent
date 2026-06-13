@@ -44,14 +44,14 @@ export default function CtaBanner({
         <div className={`flex flex-col sm:flex-row gap-3 justify-center ${!description ? 'mt-3' : ''}`}>
           <Link
             href={buttonHref}
-            className="inline-block bg-white text-[#111] font-semibold text-sm px-7 py-3 rounded-lg tracking-wide hover:bg-white/90 hover:shadow-lg transition-all duration-200"
+            className="inline-block bg-white text-[#111] font-semibold text-sm px-7 py-3 rounded-full tracking-wide hover:bg-white/90 hover:shadow-lg transition-all duration-200"
           >
             {buttonText}
           </Link>
           {buttonText2 && buttonHref2 && (
             <Link
               href={buttonHref2}
-              className="inline-block border border-white/60 text-white font-semibold text-sm px-7 py-3 rounded-lg tracking-wide hover:border-white hover:bg-white/10 transition-all duration-200"
+              className="inline-block border border-white/60 text-white font-semibold text-sm px-7 py-3 rounded-full tracking-wide hover:border-white hover:bg-white/10 transition-all duration-200"
             >
               {buttonText2}
             </Link>

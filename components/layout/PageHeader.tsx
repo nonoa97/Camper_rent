@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -15,28 +16,37 @@ const NAV = [
   ['Kapcsolat', '/kapcsolat'],
 ]
 
+// Singleton — ne jöjjön létre újra minden rendernél
+const supabase = createSupabaseBrowser()
+
 export default function PageHeader() {
+  const pathname = usePathname()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
-  const supabase = createSupabaseBrowser()
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    // onAuthStateChange fires INITIAL_SESSION immediately — no separate getUser needed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase.auth])
 
   async function handleLogout() {
     await supabase.auth.signOut()
     setProfileOpen(false)
+    router.push('/')
   }
+
+
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Fiók'
   const initials = displayName.slice(0, 2).toUpperCase()
+
+  if (pathname === '/') return null
 
   return (
     <>

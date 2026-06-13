@@ -1,141 +1,74 @@
 import Link from 'next/link'
-import PageHeader from '@/components/layout/PageHeader'
+import type { Metadata } from 'next'
 import CtaBanner from '@/components/sections/CtaBanner'
+import ExtrasCatalog from '@/components/sections/ExtrasCatalog'
+import { EXTRAS_INTRO, EXTRA_NOTES } from '@/lib/extras'
 
-const EXTRAS = [
-  {
-    category: 'Mozgás & kaland',
-    items: [
-      {
-        icon: '🚲',
-        name: 'Hegyi kerékpár',
-        desc: 'Tárcsás fékkel, terepre tervezett gumikkal. Ideális eldugott ösvények felfedezéséhez vagy egyszerűen a szomszéd faluba való kiruccanáshoz.',
-      },
-      {
-        icon: '🛴',
-        name: 'Elektromos roller',
-        desc: 'Könnyű, összecsukható, városba tökéletes. Parkolóhelytől függetlenül érd el a belvárost, a piacot vagy a strandbejárót.',
-      },
-      {
-        icon: '⚡',
-        name: 'Elektromos kerékpár',
-        desc: 'Hosszabb szakaszokra, dombokon is könnyedén. Ha élvezni akarod a tájat anélkül, hogy belehalnál a kapaszkodókba — ez a te kiegészítőd.',
-      },
-    ],
-  },
-  {
-    category: 'Outdoor felszerelés',
-    items: [
-      {
-        icon: '⛺',
-        name: 'Tetősátor',
-        desc: 'Extra alvóhely az autó tetején — csillagos égbolt garantált. Egyszerűen nyitható, stabilan rögzíthető, és azonnal otthonos érzetet ad bárhol.',
-      },
-      {
-        icon: '🎣',
-        name: 'Horgászfelszerelés',
-        desc: 'Horgászbot, orsó, műcsalik és egy tárolódoboz — minden, ami kell egy nyugodt parti reggelhez. Tavak, folyók, tengerpart: mind megér egy próbát.',
-      },
-      {
-        icon: '🥾',
-        name: 'Túrafelszerelés',
-        desc: 'Minőségi hátizsák és trekking botok pár, ha az út az aszfalton túlra visz. Könnyű, tartós, nem foglal sok helyet a csomagtérben.',
-      },
-    ],
-  },
-  {
-    category: 'Kültéri kényelem',
-    items: [
-      {
-        icon: '🔥',
-        name: 'Hordozható barbecue grill',
-        desc: 'Egy este a tűz mellett, frissen grillezett vacsorával — ez az igazi lakóautós élmény. Kompakt, könnyen tisztítható, bárhol felállítható.',
-      },
-      {
-        icon: '🪑',
-        name: 'Kerti bútor szett',
-        desc: 'Összecsukható asztal és négy szék — pár perc alatt terasz bárhol. Reggeliző az erdőszélen, vacsora a tóparton, kártya este a hegyoldalon.',
-      },
-      {
-        icon: '☂️',
-        name: 'Napvitorla / ponyva',
-        desc: 'Árnyékos hely az autó mellett, esőre is megvéd. Ha hosszabb pihenőt tartasz egy szép helyen, nem akarsz tűző napon ülni a kempingszékben.',
-      },
-    ],
-  },
-  {
-    category: 'Praktikus kiegészítők',
-    items: [
-      {
-        icon: '📡',
-        name: 'Mobil WiFi router',
-        desc: 'Korlátlan adat, egész Európában. Akkor is online maradsz, ha nincs térerő a mobilodon — ideális munkából utazóknak vagy navigáláshoz.',
-      },
-      {
-        icon: '🛏️',
-        name: 'Extra ágynemű szett',
-        desc: 'Puha takaró, extra párna, pléd hidegebb éjszakákra. Mert az első éjszaka egy ismeretlen ágyban is lehet tökéletes, ha van mivel betakaródzni.',
-      },
-      {
-        icon: '👶',
-        name: 'Gyerekülés',
-        desc: '9–36 kg-os méretben, könnyen beépíthető. Biztonságos, tanúsított, és nem kell magaddal cipelnél a reptérről — ott lesz az autóban, mire szükséged van rá.',
-      },
-    ],
-  },
-]
+export const metadata: Metadata = {
+  title: 'Extrák — Kerékpár & roller bérlés — VanLife Europe',
+  description:
+    'Bérelhető kerékpárok, e-bike-ok és rollerek a lakóautód mellé. Városnézéstől a terepig, gyerektől prémiumig — sisakkal, zárral, töltővel.',
+}
 
 export default function ExtrakPage() {
   return (
     <>
-      <PageHeader />
-
-      <section className="max-w-[1300px] mx-auto px-4 md:px-10 pt-14 pb-6 text-center">
-        <span className="block text-[10px] tracking-[0.22em] uppercase text-[#888] mb-3">Személyre szabva</span>
-        <h1 className="text-4xl font-extrabold text-[#111] mb-4">Pakold fel az autót, ahogy neked kell</h1>
-        <p className="text-[#666] text-base max-w-lg mx-auto">
-          Kerékpártól tetősátorig, WiFi routertől barbecue grillg — minden extra előre kérhető, hogy az autó már készen várjon, mire átveszed.
+      {/* Hero */}
+      <section className="max-w-[1200px] mx-auto px-4 md:px-10 pt-12 md:pt-16 pb-2">
+        <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#111] leading-tight mb-5 max-w-3xl">
+          Kerékpár & roller, az autód mellé
+        </h1>
+        <p className="text-[#555] text-base md:text-lg leading-relaxed max-w-2xl">
+          {EXTRAS_INTRO}
         </p>
       </section>
 
-      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-12">
-        <div className="space-y-14">
-          {EXTRAS.map(group => (
-            <div key={group.category}>
-              <p className="text-[10px] tracking-[0.22em] uppercase text-[#888] mb-6 border-b border-[#ece9e4] pb-3">
-                {group.category}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-8">
-                {group.items.map(item => (
-                  <div key={item.name} className="flex gap-4">
-                    <span className="text-2xl flex-shrink-0 mt-0.5">{item.icon}</span>
-                    <div>
-                      <p className="font-semibold text-[#111] mb-1.5">{item.name}</p>
-                      <p className="text-sm text-[#666] leading-relaxed">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Kategória-fülekkel darabolt katalógus */}
+      <ExtrasCatalog />
 
-      <section className="max-w-[1300px] mx-auto px-4 md:px-10 py-10 mb-4">
-        <div className="bg-[#f5f3ef] rounded-2xl px-6 md:px-10 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-10">
+      {/* Csomagok — teaser, külön oldalra */}
+      <section className="py-14 px-4 md:px-10 bg-[#1a3a2a]">
+        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <p className="text-[10px] tracking-[0.22em] uppercase text-[#888] mb-2">Hogyan működik?</p>
-            <h2 className="text-xl font-extrabold text-[#111] mb-2">Jelezd előre, mi előkészítjük</h2>
-            <p className="text-sm text-[#666] leading-relaxed max-w-lg">
-              Az extrák foglaláskor vagy e-mailben kérhetők — legkésőbb 3 nappal az átvétel előtt. Mindent előkészítünk, becsomagolunk és berakunk az autóba, hogy neked ne kelljen mással foglalkoznod.
+            <p className="text-[11px] tracking-[0.22em] uppercase text-white/50 mb-2">Kedvezményes összeállítások</p>
+            <h2 className="text-2xl md:text-3xl font-black text-white leading-tight">Készre csomagolva — bringa, roller, grill</h2>
+            <p className="text-white/60 text-sm mt-2 max-w-xl">
+              Ne alkatrészlistát rakj össze: válaszd a kész összeállítást, kedvezményes napi díjon.
             </p>
           </div>
           <Link
-            href="/kapcsolat"
-            className="flex-shrink-0 bg-[#1a3a2a] text-white text-sm font-semibold px-7 py-3.5 rounded-xl tracking-wide hover:bg-[#2d4a2d] transition-colors whitespace-nowrap"
+            href="/extrak/csomagok"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#1a3a2a] text-sm font-semibold hover:bg-[#f0f0f0] transition-colors"
           >
-            Kérd az extrakat →
+            Csomagok megtekintése <span aria-hidden>→</span>
           </Link>
+        </div>
+      </section>
+
+      {/* Tudnivalók */}
+      <section className="py-14 px-4 md:px-10 border-t border-[#e6e4df]">
+        <div className="max-w-[1200px] mx-auto">
+          <p className="text-[11px] tracking-[0.2em] uppercase text-[#999] mb-8 text-center">Jó tudni</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {EXTRA_NOTES.map(note => (
+              <div key={note.title} className="bg-white border border-[#e6e4df] rounded-2xl p-5">
+                <h3 className="font-bold text-[#111] text-sm mb-2">{note.title}</h3>
+                <p className="text-[#666] text-sm leading-relaxed">{note.text}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-10">
+            <Link
+              href="/kapcsolat"
+              className="inline-flex items-center gap-2 bg-[#1a3a2a] text-white text-sm font-semibold px-7 py-3.5 rounded-full tracking-wide hover:bg-[#2d4a2d] transition-colors"
+            >
+              Kérd hozzá az autódhoz <span aria-hidden>→</span>
+            </Link>
+            <p className="text-[#aaa] text-xs mt-3">
+              Az extrákat foglaláskor vagy e-mailben kérheted — legkésőbb 3 nappal átvétel előtt.
+            </p>
+          </div>
         </div>
       </section>
 

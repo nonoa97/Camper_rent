@@ -20,6 +20,37 @@ function validateCamperData(data: { name: string; slug: string }): string | null
   return null
 }
 
+async function validateAssignableFeatureIds(featureIds: number[]): Promise<{ ids: number[]; error: string | null }> {
+  const ids = [...new Set(featureIds)]
+
+  if (ids.some(id => !Number.isInteger(id) || id <= 0)) {
+    return { ids: [], error: 'Érvénytelen felszereltség azonosító.' }
+  }
+
+  if (ids.length === 0) return { ids, error: null }
+
+  const { data, error } = await supabaseAdmin
+    .from('features')
+    .select('id, key')
+    .in('id', ids)
+
+  if (error) return { ids: [], error: error.message }
+
+  const rows = (data ?? []) as Array<{ id: number; key: string | null }>
+  const foundIds = new Set(rows.map(row => Number(row.id)))
+  const missingIds = ids.filter(id => !foundIds.has(id))
+  if (missingIds.length > 0) {
+    return { ids: [], error: `Ismeretlen felszereltség azonosító: ${missingIds.join(', ')}.` }
+  }
+
+  const missingKeyIds = rows.filter(row => !row.key).map(row => row.id)
+  if (missingKeyIds.length > 0) {
+    return { ids: [], error: `Canonical key nélküli felszereltség nem rendelhető lakóautóhoz: ${missingKeyIds.join(', ')}.` }
+  }
+
+  return { ids, error: null }
+}
+
 // ── Update price (peak season in camper_prices) ────────────────
 export async function actionUpdatePrice(id: string, price: number): Promise<{ error: string | null }> {
   await requireAdmin()
@@ -51,7 +82,6 @@ export async function actionSaveCamper(
     type: CamperType | null
     gearbox: CamperGearbox | null
     fuel_type: CamperFuel | null
-    wild_camping_suitable: boolean | null
     beds: number | null
     feature_ids: number[]
   },
@@ -62,14 +92,17 @@ export async function actionSaveCamper(
   if (validationError) return { error: validationError }
 
   const { feature_ids, ...fields } = data
+  const featureValidation = await validateAssignableFeatureIds(feature_ids)
+  if (featureValidation.error) return { error: featureValidation.error }
+
   const { error } = await supabaseAdmin.from('campers').update(fields).eq('id', id)
   if (error) return { error: error.message }
 
   await supabaseAdmin.from('camper_features').delete().eq('camper_id', id)
-  if (feature_ids.length > 0) {
+  if (featureValidation.ids.length > 0) {
     const { error: fe } = await supabaseAdmin
       .from('camper_features')
-      .insert(feature_ids.map(fid => ({ camper_id: id, feature_id: fid })))
+      .insert(featureValidation.ids.map(fid => ({ camper_id: id, feature_id: fid })))
     if (fe) return { error: fe.message }
   }
 
@@ -88,7 +121,6 @@ export async function actionCreateCamper(data: {
   type: CamperType | null
   gearbox: CamperGearbox | null
   fuel_type: CamperFuel | null
-  wild_camping_suitable: boolean | null
   beds: number | null
   feature_ids: number[]
 }): Promise<{ id: string | null; error: string | null }> {
@@ -98,6 +130,9 @@ export async function actionCreateCamper(data: {
   if (validationError) return { id: null, error: validationError }
 
   const { feature_ids, ...fields } = data
+  const featureValidation = await validateAssignableFeatureIds(feature_ids)
+  if (featureValidation.error) return { id: null, error: featureValidation.error }
+
   const slug = fields.slug || fields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
   const { data: row, error } = await supabaseAdmin
@@ -109,10 +144,10 @@ export async function actionCreateCamper(data: {
   if (error || !row) return { id: null, error: error?.message ?? 'Insert failed' }
 
   const newId = (row as any).id as string
-  if (feature_ids.length > 0) {
+  if (featureValidation.ids.length > 0) {
     await supabaseAdmin
       .from('camper_features')
-      .insert(feature_ids.map(fid => ({ camper_id: newId, feature_id: fid })))
+      .insert(featureValidation.ids.map(fid => ({ camper_id: newId, feature_id: fid })))
   }
 
   return { id: newId, error: null }

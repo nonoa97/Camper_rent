@@ -26,11 +26,12 @@ export function validateGptOutput(
 
   let recommendations: { slug: string; reason: string }[] = []
   if (Array.isArray(parsed.recommendations) && mode !== 'ask_next_question') {
+    const allowAnyRecommendation = mode !== 'recommend' && allowedSlugs.size === 0
     recommendations = (parsed.recommendations as unknown[])
       .filter(
         (r): r is { slug: string; reason: string } =>
           typeof (r as any)?.slug === 'string' &&
-          (allowedSlugs.size === 0 || allowedSlugs.has((r as any).slug)),
+          (allowAnyRecommendation || allowedSlugs.has((r as any).slug)),
       )
       .slice(0, 2)
       .map(r => ({

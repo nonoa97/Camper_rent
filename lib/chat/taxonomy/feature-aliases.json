@@ -1,0 +1,304 @@
+[
+  {
+    "featureKey": "cassette_wc",
+    "locale": "hu",
+    "aliases": ["wc", "vécé", "vece", "saját wc", "kazettás wc", "toalett", "mosdó wc"]
+  },
+  {
+    "featureKey": "cassette_wc",
+    "locale": "en",
+    "aliases": ["wc", "toilet", "cassette toilet", "bathroom toilet", "own toilet"]
+  },
+  {
+    "featureKey": "cassette_wc",
+    "locale": "de",
+    "aliases": ["wc", "toilette", "campingtoilette", "kassettentoilette"]
+  },
+  {
+    "featureKey": "cassette_wc",
+    "locale": "es",
+    "aliases": ["wc", "baño", "bano", "inodoro", "toalete"]
+  },
+  {
+    "featureKey": "solar_panel",
+    "locale": "hu",
+    "aliases": ["napelem", "solar", "napenergia", "napelemes rendszer"]
+  },
+  {
+    "featureKey": "solar_panel",
+    "locale": "en",
+    "aliases": ["solar panel", "solar", "solar power"]
+  },
+  {
+    "featureKey": "solar_panel",
+    "locale": "de",
+    "aliases": ["solarpanel", "solar", "photovoltaik"]
+  },
+  {
+    "featureKey": "solar_panel",
+    "locale": "es",
+    "aliases": ["panel solar", "solar", "energía solar", "energia solar"]
+  },
+  {
+    "featureKey": "shower",
+    "locale": "hu",
+    "aliases": ["zuhany", "zuhanyzó", "saját zuhany", "belső zuhany"]
+  },
+  {
+    "featureKey": "shower",
+    "locale": "en",
+    "aliases": ["shower", "indoor shower", "own shower"]
+  },
+  {
+    "featureKey": "shower",
+    "locale": "de",
+    "aliases": ["dusche", "eigene dusche"]
+  },
+  {
+    "featureKey": "shower",
+    "locale": "es",
+    "aliases": ["ducha", "ducha propia"]
+  },
+  {
+    "featureKey": "living_area_ac",
+    "locale": "hu",
+    "aliases": ["lakótéri klíma", "lakoteri klima", "hátsó klíma", "utastéri klíma"],
+    "ambiguousAliases": ["klíma", "legkondi", "légkondi"]
+  },
+  {
+    "featureKey": "cab_ac",
+    "locale": "hu",
+    "aliases": ["vezetőfülke klíma", "vezetofulke klima", "vezetőtéri klíma", "fülkeklima"],
+    "ambiguousAliases": ["klíma", "legkondi", "légkondi"]
+  },
+  {
+    "featureKey": "living_area_ac",
+    "locale": "en",
+    "aliases": ["living area ac", "living ac", "rear ac", "habitation air conditioning"],
+    "ambiguousAliases": ["air conditioning", "ac"]
+  },
+  {
+    "featureKey": "cab_ac",
+    "locale": "en",
+    "aliases": ["cab ac", "driver cab ac", "front air conditioning"],
+    "ambiguousAliases": ["air conditioning", "ac"]
+  },
+  {
+    "featureKey": "refrigerator",
+    "locale": "hu",
+    "aliases": ["hűtő", "huto", "hűtőszekrény"]
+  },
+  {
+    "featureKey": "refrigerator",
+    "locale": "en",
+    "aliases": ["fridge", "refrigerator"]
+  },
+  {
+    "featureKey": "bike_rack",
+    "locale": "hu",
+    "aliases": ["biciklitartó", "bringatartó", "kerékpártartó"]
+  },
+  {
+    "featureKey": "bike_rack",
+    "locale": "en",
+    "aliases": ["bike rack", "bicycle rack"]
+  },
+  {
+    "featureKey": "wifi_router",
+    "locale": "hu",
+    "aliases": ["wifi", "wifi router", "internet", "mobilnet"]
+  },
+  {
+    "featureKey": "wifi_router",
+    "locale": "en",
+    "aliases": ["wifi", "wi fi", "internet", "router"]
+  },
+  {
+    "featureKey": "awning",
+    "locale": "hu",
+    "aliases": ["napellenző", "napellenzo", "napernyő", "árnyékoló"]
+  },
+  {
+    "featureKey": "awning",
+    "locale": "en",
+    "aliases": ["awning", "sun shade", "sunshade"]
+  },
+  {
+    "featureKey": "pet_friendly",
+    "locale": "hu",
+    "aliases": ["kisállatbarát", "kutyabarát", "állatbarát", "macskabarát"]
+  },
+  {
+    "featureKey": "pet_friendly",
+    "locale": "en",
+    "aliases": ["pet friendly", "dog friendly", "cat friendly"]
+  },
+  {
+    "featureKey": "leisure_battery",
+    "locale": "hu",
+    "aliases": ["lakóakkumulátor", "lakoakkumulator", "lakó akku", "lako akku", "fedélzeti akku", "fedelzeti akku"]
+  },
+  {
+    "featureKey": "leisure_battery",
+    "locale": "en",
+    "aliases": ["leisure battery", "house battery", "camper battery"]
+  },
+  {
+    "featureKey": "lithium_battery",
+    "locale": "hu",
+    "aliases": ["lítium akkumulátor", "litium akkumulator", "lítium akku", "litium akku"]
+  },
+  {
+    "featureKey": "lithium_battery",
+    "locale": "en",
+    "aliases": ["lithium battery", "lithium leisure battery"]
+  },
+  {
+    "featureKey": "inverter",
+    "locale": "hu",
+    "aliases": ["inverter", "áramátalakító", "aramatalakito"]
+  },
+  {
+    "featureKey": "inverter",
+    "locale": "en",
+    "aliases": ["inverter", "power inverter"]
+  },
+  {
+    "featureKey": "freshwater_tank",
+    "locale": "hu",
+    "aliases": ["frissvíz tartály", "frissviz tartaly", "ivóvíz tartály", "ivoviz tartaly", "víztartály", "viztartaly"]
+  },
+  {
+    "featureKey": "freshwater_tank",
+    "locale": "en",
+    "aliases": ["freshwater tank", "fresh water tank", "water tank"]
+  },
+  {
+    "featureKey": "greywater_tank",
+    "locale": "hu",
+    "aliases": ["szürkevíz tartály", "szurkeviz tartaly", "szennyvíz tartály", "szennyviz tartaly"]
+  },
+  {
+    "featureKey": "greywater_tank",
+    "locale": "en",
+    "aliases": ["greywater tank", "grey water tank", "waste water tank"]
+  },
+  {
+    "featureKey": "gas_cylinder",
+    "locale": "hu",
+    "aliases": ["gázpalack", "gazpalack", "gáz palack", "gaz palack"]
+  },
+  {
+    "featureKey": "gas_cylinder",
+    "locale": "en",
+    "aliases": ["gas cylinder", "gas bottle", "propane bottle"]
+  },
+  {
+    "featureKey": "diesel_heater",
+    "locale": "hu",
+    "aliases": ["dízel fűtés", "dizel futes", "diesel fűtés", "diesel futes"],
+    "ambiguousAliases": ["fűtés", "futes"]
+  },
+  {
+    "featureKey": "diesel_heater",
+    "locale": "en",
+    "aliases": ["diesel heater", "diesel heating"],
+    "ambiguousAliases": ["heater", "heating"]
+  },
+  {
+    "featureKey": "parking_heater",
+    "locale": "hu",
+    "aliases": ["állófűtés", "allofutes", "álló fűtés", "allo futes"],
+    "ambiguousAliases": ["fűtés", "futes"]
+  },
+  {
+    "featureKey": "parking_heater",
+    "locale": "en",
+    "aliases": ["parking heater", "stationary heater"],
+    "ambiguousAliases": ["heater", "heating"]
+  },
+  {
+    "featureKey": "gas_heater",
+    "locale": "hu",
+    "aliases": ["gázfűtés", "gazfutes", "gáz fűtés", "gaz futes"],
+    "ambiguousAliases": ["fűtés", "futes"]
+  },
+  {
+    "featureKey": "gas_heater",
+    "locale": "en",
+    "aliases": ["gas heater", "gas heating"],
+    "ambiguousAliases": ["heater", "heating"]
+  },
+  {
+    "featureKey": "underfloor_heating",
+    "locale": "hu",
+    "aliases": ["padlófűtés", "padlofutes", "padló fűtés", "padlo futes"],
+    "ambiguousAliases": ["fűtés", "futes"]
+  },
+  {
+    "featureKey": "underfloor_heating",
+    "locale": "en",
+    "aliases": ["underfloor heating", "floor heating"],
+    "ambiguousAliases": ["heater", "heating"]
+  },
+  {
+    "featureKey": "socket_230v",
+    "locale": "hu",
+    "aliases": ["230v konnektor", "230 v konnektor", "belső 230v", "belso 230v", "hálózati konnektor", "halozati konnektor"]
+  },
+  {
+    "featureKey": "socket_230v",
+    "locale": "en",
+    "aliases": ["230v socket", "230 v socket", "mains socket", "indoor socket"]
+  },
+  {
+    "featureKey": "external_socket_230v",
+    "locale": "hu",
+    "aliases": ["külső 230v", "kulso 230v", "külső 230v csatlakozó", "kulso 230v csatlakozo", "külső áramcsatlakozó", "kulso aramcsatlakozo"]
+  },
+  {
+    "featureKey": "external_socket_230v",
+    "locale": "en",
+    "aliases": ["external 230v socket", "external mains socket", "outside socket"]
+  },
+  {
+    "featureKey": "water_filter",
+    "locale": "hu",
+    "aliases": ["vízszűrő", "vizszuro", "víz szűrő", "viz szuro"]
+  },
+  {
+    "featureKey": "water_filter",
+    "locale": "en",
+    "aliases": ["water filter", "water filtration"]
+  },
+  {
+    "featureKey": "water_level_indicator",
+    "locale": "hu",
+    "aliases": ["vízszintjelző", "vizszintjelzo", "vízszint jelző", "vizszint jelzo"]
+  },
+  {
+    "featureKey": "water_level_indicator",
+    "locale": "en",
+    "aliases": ["water level indicator", "water gauge", "water level gauge"]
+  },
+  {
+    "featureKey": "usb_charger",
+    "locale": "hu",
+    "aliases": ["usb töltő", "usb tolto", "usb töltési lehetőség", "usb toltesi lehetoseg"]
+  },
+  {
+    "featureKey": "usb_charger",
+    "locale": "en",
+    "aliases": ["usb charger", "usb charging"]
+  },
+  {
+    "featureKey": "usb_c_charger",
+    "locale": "hu",
+    "aliases": ["usb-c töltő", "usb c tolto", "usb-c csatlakozó", "usb c csatlakozo"]
+  },
+  {
+    "featureKey": "usb_c_charger",
+    "locale": "en",
+    "aliases": ["usb-c charger", "usb c charger", "usb-c charging", "usb c charging"]
+  }
+]

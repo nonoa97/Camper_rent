@@ -1,9 +1,45 @@
+import type {
+  AmbiguousPreference,
+  AttributePreference,
+  CapabilityPreference,
+  FeaturePreference,
+  PricingPreference,
+  UnmappedPreference,
+} from './preferences'
+import { isSeasonalTimingOnlyMessage, resolveSeasonalTiming } from './seasonalTiming'
+
 export type ConversationIntent = 'recommendation' | 'availability' | 'faq' | 'booking' | 'catalog'
 export type CampingType = 'wild' | 'camping_site'
 export type RefinementPreference = 'cheaper' | 'more_expensive' | 'smaller' | 'bigger' | 'different'
+export type RefinementIntentType =
+  | 'cheaper'
+  | 'more_expensive'
+  | 'bigger'
+  | 'smaller'
+  | 'different'
+  | 'similar'
+  | 'keep_current'
+  | 'prefer_previous'
+  | 'remove_constraint'
+  | 'add_constraint'
+export type RefinementIntentStrength = 'soft' | 'hard'
 export type AvailabilityQuestion = 'longest_duration' | 'remembered_slot_duration'
 export type PendingAvailabilityAction = 'find_earliest_availability'
 export type ReferenceTarget = 'previousAvailability' | 'lastAvailability' | 'lastRecommendation' | 'firstShownOption' | 'lastShownOption'
+export type RecommendationReferenceHint =
+  | { kind: 'feature'; featureKey: string }
+  | { kind: 'attribute'; attributeKey: 'gearbox' | 'beds' | 'type' | 'year'; value?: string | number | boolean; relation?: 'eq' | 'max' | 'min' }
+  | { kind: 'capability'; capabilityKey: string; minScore?: number }
+  | { kind: 'price'; relation: 'cheapest' | 'most_expensive'; priceField?: 'pricePerDay' | 'totalPrice' }
+export type RecommendationInteractionType = 'selected' | 'dismissed' | 'compared'
+export interface RecommendationInteractionSignal {
+  type: RecommendationInteractionType
+  targetReference?: ReferenceTarget
+  targetRecommendationReference?: RecommendationReferenceHint
+  secondaryTargetReference?: ReferenceTarget
+  secondaryRecommendationReference?: RecommendationReferenceHint
+  sourceText: string
+}
 
 export type AvailabilityMemorySource = 'earliest' | 'fallback_earliest' | 'longest'
 export type MemoryDecisionType = 'availability_option' | 'camper_recommendation' | 'alternative_search' | 'checklist_question'
@@ -45,6 +81,10 @@ export interface MemoryNote {
 export interface ConversationMemory {
   notes?: MemoryNote[]
   mentionedAvailabilityOptions?: AvailabilityMemorySlot[]
+  /**
+   * Short prompt-context mirror of recently mentioned campers.
+   * Recommendation history and stable option references live in SessionMemory.
+   */
   mentionedCampers?: MentionedCamperMemory[]
   acceptedConstraints?: ConstraintMemory[]
   rejectedConstraints?: ConstraintMemory[]
@@ -95,13 +135,58 @@ export interface AvailabilityCriteria {
   durationDays?: number
   passengers?: number
   campingType?: CampingType
+  featurePreferences?: FeaturePreference[]
+  attributePreferences?: AttributePreference[]
+  capabilityPreferences?: CapabilityPreference[]
+  pricingPreference?: PricingPreference
+  /** @deprecated Legacy raw availability criteria retained for old client-carried memory. */
   extraRequirements?: string[]
+  /** @deprecated Legacy raw availability criteria retained for old client-carried memory. */
   softPreferences?: string[]
   earliestAvailable?: boolean
 }
 
+export interface RecommendationCriteria {
+  month?: string
+  startDate?: string
+  endDate?: string
+  durationDays?: number
+  passengers?: number
+  campingType?: CampingType
+  featurePreferences?: FeaturePreference[]
+  attributePreferences?: AttributePreference[]
+  capabilityPreferences?: CapabilityPreference[]
+  pricingPreference?: PricingPreference
+}
+
+export interface RecommendationAttributeFacts {
+  beds?: number | null
+  type?: string | null
+  gearbox?: string | null
+  fuel_type?: string | null
+  year?: number | null
+}
+
+export interface RecommendationAvailabilitySummary {
+  from?: string
+  to?: string
+  days?: number
+}
+
+export interface RecommendationCapabilityMatchSummary {
+  capabilityKey: string
+  strength: 'hard' | 'soft'
+  score: number
+  matchedWeight: number
+  totalWeight: number
+  matchedFeatures: string[]
+  missingFeatures: string[]
+  passedThreshold?: boolean
+}
+
 export interface FlexibleTripCriteria {
   months?: string[]
+  preferredStartWindows?: PreferredStartWindow[]
   durationDays?: {
     min?: number
     max?: number
@@ -116,32 +201,105 @@ export interface FlexibleTripCriteria {
   campingTypes?: CampingType[]
 }
 
+export type PreferredStartWindowPrecision =
+  | 'month'
+  | 'month_part'
+  | 'around_month'
+  | 'around_date'
+  | 'season'
+  | 'season_part'
+  | 'around_season'
+
+export interface PreferredStartWindow {
+  startDate: string
+  endDate: string
+  precision: PreferredStartWindowPrecision
+  sourceText?: string
+  label?: string
+  part?: 'early' | 'middle' | 'late'
+  toleranceDays?: number
+}
+
+export interface RefinementIntent {
+  intent: RefinementIntentType
+  targetReference?: ReferenceTarget
+  sourceText: string
+  strength?: RefinementIntentStrength
+  timestamp?: string
+}
+
 export interface SessionRecommendationResult {
+  optionId?: string
   camperSlug: string
   camperName: string
+  shownIndex?: number
+  shownAt?: string
+  criteria?: RecommendationCriteria
+  criteriaHash?: string
   from?: string
   to?: string
   days?: number
   pricePerDay?: number
+  totalPrice?: number
+  score?: number | null
+  source?: 'evaluation_engine' | 'legacy_fallback'
+  featureKeys?: string[]
+  attributeFacts?: RecommendationAttributeFacts
+  capabilityMatches?: RecommendationCapabilityMatchSummary[]
+  availabilitySummary?: RecommendationAvailabilitySummary
 }
 
 export interface SessionShownOption {
   index: number
+  optionId?: string
   camperSlug: string
   camperName: string
+  shownAt?: string
+  criteria?: RecommendationCriteria
+  criteriaHash?: string
   from?: string
   to?: string
   days?: number
   pricePerDay?: number
+  totalPrice?: number
+  score?: number | null
+  source?: SessionRecommendationResult['source']
+  featureKeys?: string[]
+  attributeFacts?: RecommendationAttributeFacts
+  capabilityMatches?: RecommendationCapabilityMatchSummary[]
+  availabilitySummary?: RecommendationAvailabilitySummary
+}
+
+export type MemoryEventType = 'shown' | 'referenced' | 'selected' | 'dismissed' | 'compared'
+
+export type MemoryEventMetadata = Record<
+  string,
+  string | number | boolean | null | string[] | number[] | boolean[]
+>
+
+export interface MemoryEvent {
+  eventId: string
+  eventType: MemoryEventType
+  timestamp: string
+  optionId: string
+  camperSlug?: string
+  metadata?: MemoryEventMetadata
 }
 
 export interface SessionMemory {
+  /** Optional additive schema marker for future client-carried memory migrations. */
+  schemaVersion?: number
+  /** Historical availability truth for reference resolution. */
   lastAvailabilityResult?: SessionAvailabilityResult
   previousAvailabilityResults?: SessionAvailabilityResult[]
   staleAvailabilityResults?: SessionAvailabilityResult[]
+  /** Historical recommendation snapshots. Not an input truth source for new recommendations. */
   lastRecommendationResult?: SessionRecommendationResult
   shownOptions?: SessionShownOption[]
+  /** Objective interaction events tied to stable recommendation optionId values. */
+  memoryEvents?: MemoryEvent[]
   lastSpecificCamperAvailability?: SessionAvailabilityResult
+  /** @deprecated Legacy mirror. Compared recommendation interactions should use memoryEvents. */
   lastComparedCamper?: string
 }
 
@@ -155,21 +313,42 @@ export interface ConversationState {
   durationDays?: number
   passengers?: number
   campingType?: CampingType
-  extraRequirements?: string[]    // hard requirements — user stated as mandatory
-  softPreferences?: string[]      // nice-to-haves — user prefers but not mandatory
+  /**
+   * Legacy raw hard/checklist compatibility field.
+   * Known structured needs should use featurePreferences, attributePreferences,
+   * capabilityPreferences, pricingPreference, unmappedPreferences or
+   * ambiguousPreferences. Do not use as primary recommendation truth source.
+   */
+  extraRequirements?: string[]
+  /**
+   * Legacy raw soft/context compatibility field.
+   * Known structured needs should use canonical preference fields. Do not use
+   * as primary recommendation truth source.
+   */
+  softPreferences?: string[]
+  featurePreferences?: FeaturePreference[]
+  attributePreferences?: AttributePreference[]
+  capabilityPreferences?: CapabilityPreference[]
+  pricingPreference?: PricingPreference
+  unmappedPreferences?: UnmappedPreference[]
+  ambiguousPreferences?: AmbiguousPreference[]
   extraRequirementsAsked?: boolean
   skippedChecklist?: ChecklistField[]  // fields the user explicitly said "don't know / doesn't matter"
   positiveAcknowledgement?: boolean   // ephemeral — user expressed satisfaction with last shown camper
   availabilityQuestion?: AvailabilityQuestion  // ephemeral — semantic availability sub-question from latest user message
   referenceTarget?: ReferenceTarget   // ephemeral — latest message refers to an option in SessionMemory
+  recommendationReference?: RecommendationReferenceHint // ephemeral — fact-based recommendation reference hint
+  recommendationInteraction?: RecommendationInteractionSignal // ephemeral objective interaction signal; persisted only as SessionMemory event
   selectedCamperSlug?: string
-  alreadyRecommendedSlugs?: string[]
+  alreadyRecommendedSlugs?: string[]  // current recommendation exclusion input, not history
   earliestAvailable?: boolean  // user wants earliest possible slot, no specific month
   flexibleCriteria?: FlexibleTripCriteria
   lastAskedField?: ChecklistField  // which checklist field the bot just asked about
-  lastShownCamperSlug?: string    // first slug from last recommendation response — used for follow-up availability questions
-  refinementPreference?: RefinementPreference  // ephemeral — what direction user wants to refine
-  lastShownPrice?: number         // price of last recommended camper — used for "closest cheaper/more expensive"
+  lastShownCamperSlug?: string    // current focus for proximal follow-up questions
+  /** @deprecated Legacy ephemeral refinement bridge. Use refinementIntent. */
+  refinementPreference?: RefinementPreference
+  refinementIntent?: RefinementIntent  // canonical current refinement intent; not memory and not a recommendation
+  lastShownPrice?: number         // current refinement anchor, not historical price memory
   extrasOffered?: boolean         // true after first successful recommendation — prevents repeat upsell
   pendingAvailabilityAction?: PendingAvailabilityAction
   conversationMemory?: ConversationMemory
@@ -183,6 +362,15 @@ export interface ConversationState {
     camperSlug?: string
     camperName?: string
   }
+}
+
+export type ConversationStateUpdate = Partial<ConversationState> & {
+  /**
+   * Internal one-turn merge delta used to remove canonical capability
+   * constraints after explicit user correction.
+   * It is not persisted as ConversationState truth.
+   */
+  removedCapabilityPreferenceKeys?: string[]
 }
 
 // november and december are the same in Hungarian and English — only listed once
@@ -233,13 +421,22 @@ function extractCampingTypeFromMessage(message: string): CampingType | undefined
     return 'camping_site'
   }
 
-  const hasWildSignal = /\b(vadkemp|nem\s+kemping|nem\s+hivatalos\s+kemping|kempingen\s+kivuli|kempingen\s+kivul|kempinghelyen\s+kivuli|szabad terulet|off-?grid|termeszetben)\b/.test(normalized)
-  const negatesWild = /\b(nem|megsem|no|not|kein)\b.{0,40}\b(vadkemp|wild\s+camping|wildcamping)\b/.test(normalized)
-  if (hasWildSignal && !negatesWild) {
-    return 'wild'
-  }
-
   return undefined
+}
+
+function extractWildCampingCapabilityFromMessage(
+  message: string,
+): NonNullable<ConversationState['capabilityPreferences']>[number] | undefined {
+  const normalized = normalizeForMatch(message)
+  const hasWildSignal = /\b(vadkemp|nem\s+kemping|nem\s+hivatalos\s+kemping|kempingen\s+kivuli|kempingen\s+kivul|kempinghelyen\s+kivuli|szabad terulet|termeszetben)\b/.test(normalized)
+  const negatesWild = /\b(nem|megsem|no|not|kein)\b.{0,40}\b(vadkemp|wild\s+camping|wildcamping)\b/.test(normalized)
+  if (!hasWildSignal || negatesWild) return undefined
+  return {
+    key: 'wild_camping',
+    strength: /\b(talan|lehet|lehetne|jo lenne|ha megoldhato|maybe|possibly|would be nice)\b/.test(normalized) ? 'soft' : 'hard',
+    sourceText: message.trim(),
+    detectedLocale: 'hu',
+  }
 }
 
 function detectIntent(message: string, current?: ConversationIntent): ConversationIntent {
@@ -258,9 +455,9 @@ export function extractStateFromMessage(
   message: string,
   history: { role: string; content: string }[],
   current: ConversationState,
-): Partial<ConversationState> {
+): ConversationStateUpdate {
   const all = [...history.map(m => m.content), message].join(' ')
-  const update: Partial<ConversationState> = {}
+  const update: ConversationStateUpdate = {}
 
   // Intent
   update.intent = detectIntent(message, current.intent)
@@ -286,9 +483,25 @@ export function extractStateFromMessage(
   const currentCampingType = extractCampingTypeFromMessage(message)
   if (currentCampingType) {
     update.campingType = currentCampingType
+    if (currentCampingType === 'camping_site') {
+      update.removedCapabilityPreferenceKeys = [
+        ...new Set([...(update.removedCapabilityPreferenceKeys ?? []), 'wild_camping']),
+      ]
+    }
   } else if (!current.campingType) {
     const historicalCampingType = extractCampingTypeFromMessage(all)
     if (historicalCampingType) update.campingType = historicalCampingType
+  }
+  const wildCampingCapability = extractWildCampingCapabilityFromMessage(message)
+  if (wildCampingCapability) {
+    update.capabilityPreferences = [
+      ...(update.capabilityPreferences ?? []),
+      wildCampingCapability,
+    ]
+    update.skippedChecklist = [
+      ...new Set([...(update.skippedChecklist ?? []), 'campingType']),
+    ] as ChecklistField[]
+    if (update.campingType === 'wild') update.campingType = undefined
   }
 
   // Duration — "7 nap", "10 napra", "7-10 nap" (take minimum), "egy hét", "két hét"
@@ -318,13 +531,24 @@ export function extractStateFromMessage(
     const next = curMonth === 12 ? 1 : curMonth + 1
     const y = curMonth === 12 ? curYear + 1 : curYear
     update.month = `${y}-${String(next).padStart(2, '0')}`
-  } else if (/\bnyáron\b/i.test(lowerMsg)) {
-    update.month = `${curYear}-07`
-  } else if (/\btavasszal\b/i.test(lowerMsg)) {
-    update.month = `${curYear}-04`
-  } else if (/\bősszel\b/i.test(lowerMsg)) {
-    update.month = `${curYear}-09`
   } else {
+    const seasonalTiming = resolveSeasonalTiming(message)
+    if (seasonalTiming?.months.length) {
+      update.flexibleCriteria = {
+        ...(update.flexibleCriteria ?? {}),
+        months: seasonalTiming.months,
+        preferredStartWindows: seasonalTiming.preferredStartWindows,
+      }
+      if (isSeasonalTimingOnlyMessage(message)) {
+        delete update.durationDays
+        delete update.passengers
+        delete update.campingType
+        delete update.extraRequirementsAsked
+      }
+    }
+  }
+
+  if (!update.month && !update.flexibleCriteria?.months?.length) {
     for (const [name, num] of Object.entries(MONTH_MAP)) {
       if (lowerMsg.includes(name)) {
         const mNum = parseInt(num)
@@ -353,9 +577,13 @@ export function extractStateFromMessage(
   return update
 }
 
-export function mergeState(current: ConversationState, update: Partial<ConversationState>): ConversationState {
+export function mergeState(current: ConversationState, update: ConversationStateUpdate): ConversationState {
+  const {
+    removedCapabilityPreferenceKeys = [],
+    ...persistableUpdate
+  } = update
   const currentMemory = current.conversationMemory
-  const updateMemory = update.conversationMemory
+  const updateMemory = persistableUpdate.conversationMemory
   const mergedMemory: ConversationMemory | undefined = currentMemory || updateMemory
     ? {
         ...currentMemory,
@@ -408,12 +636,15 @@ export function mergeState(current: ConversationState, update: Partial<Conversat
 
   return {
     ...current,
-    ...update,
+    ...persistableUpdate,
     // ephemeral fields — reset each turn unless explicitly extracted
     refinementPreference: 'refinementPreference' in update ? update.refinementPreference : undefined,
+    refinementIntent: 'refinementIntent' in update ? update.refinementIntent : undefined,
     positiveAcknowledgement: update.positiveAcknowledgement ?? undefined,
     availabilityQuestion: update.availabilityQuestion ?? undefined,
     referenceTarget: update.referenceTarget ?? undefined,
+    recommendationReference: update.recommendationReference ?? undefined,
+    recommendationInteraction: update.recommendationInteraction ?? undefined,
     alreadyRecommendedSlugs: [
       ...new Set([
         ...(current.alreadyRecommendedSlugs ?? []),
@@ -432,6 +663,34 @@ export function mergeState(current: ConversationState, update: Partial<Conversat
         ...(update.softPreferences ?? []),
       ]),
     ],
+    featurePreferences: mergeBy(
+      current.featurePreferences,
+      update.featurePreferences,
+      preference => `${preference.key}|${preference.strength}|${preference.sourceText}`,
+    ),
+    attributePreferences: mergeBy(
+      current.attributePreferences,
+      update.attributePreferences,
+      preference => `${preference.key}|${preference.operator ?? ''}|${String(preference.value)}|${preference.strength}|${preference.sourceText}`,
+    ),
+    capabilityPreferences: mergeBy(
+      (current.capabilityPreferences ?? []).filter(
+        preference => !removedCapabilityPreferenceKeys.includes(preference.key),
+      ),
+      update.capabilityPreferences,
+      preference => `${preference.key}|${preference.strength}|${preference.sourceText}`,
+    ),
+    pricingPreference: update.pricingPreference ?? current.pricingPreference,
+    unmappedPreferences: mergeBy(
+      current.unmappedPreferences,
+      update.unmappedPreferences,
+      preference => `${preference.reason}|${preference.sourceText}`,
+    ),
+    ambiguousPreferences: mergeBy(
+      current.ambiguousPreferences,
+      update.ambiguousPreferences,
+      preference => `${preference.reason}|${preference.sourceText}|${preference.candidates.join(',')}`,
+    ),
     skippedChecklist: [
       ...new Set([
         ...(current.skippedChecklist ?? []),
@@ -443,6 +702,20 @@ export function mergeState(current: ConversationState, update: Partial<Conversat
   }
 }
 
+function mergeBy<T>(
+  current: T[] | undefined,
+  update: T[] | undefined,
+  getKey: (item: T) => string,
+): T[] | undefined {
+  if (!current && !update) return undefined
+  return [
+    ...new Map([
+      ...(current ?? []),
+      ...(update ?? []),
+    ].map(item => [getKey(item), item])).values(),
+  ]
+}
+
 function mergeFlexibleCriteria(
   current?: FlexibleTripCriteria,
   update?: FlexibleTripCriteria,
@@ -452,6 +725,9 @@ function mergeFlexibleCriteria(
     ...current,
     ...update,
     months: update?.months ? [...new Set(update.months)].slice(0, 6) : current?.months,
+    preferredStartWindows: update?.preferredStartWindows
+      ? dedupePreferredStartWindows(update.preferredStartWindows).slice(0, 6)
+      : current?.preferredStartWindows,
     durationDays: update?.durationDays
       ? {
           ...current?.durationDays,
@@ -474,4 +750,13 @@ function mergeFlexibleCriteria(
       ? [...new Set(update.campingTypes)].slice(0, 2)
       : current?.campingTypes,
   }
+}
+
+function dedupePreferredStartWindows(windows: PreferredStartWindow[]): PreferredStartWindow[] {
+  return [
+    ...new Map(windows
+      .filter(window => /^\d{4}-\d{2}-\d{2}$/.test(window.startDate) && /^\d{4}-\d{2}-\d{2}$/.test(window.endDate))
+      .map(window => [`${window.startDate}|${window.endDate}|${window.precision}|${window.sourceText ?? ''}`, window]))
+      .values(),
+  ]
 }

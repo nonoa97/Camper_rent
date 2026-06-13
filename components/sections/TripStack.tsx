@@ -263,12 +263,12 @@ export default function TripStack({ trips }: { trips: Trip[] }) {
       {L.desktop && (
         <>
           <button onClick={() => go('right')}
-            className="absolute top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/90 hover:bg-white border border-[#e0ddd9] shadow-md flex items-center justify-center text-[#333] text-xl transition-all hover:shadow-lg"
+            className="absolute top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/90 hover:bg-white border border-[#e6e4df] shadow-md flex items-center justify-center text-[#333] text-xl transition-all hover:shadow-lg"
             style={{ left: `max(8px, calc(${L.cardL} - ${L.peekFar}px))` }}>
             ‹
           </button>
           <button onClick={() => go('left')}
-            className="absolute top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/90 hover:bg-white border border-[#e0ddd9] shadow-md flex items-center justify-center text-[#333] text-xl transition-all hover:shadow-lg"
+            className="absolute top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/90 hover:bg-white border border-[#e6e4df] shadow-md flex items-center justify-center text-[#333] text-xl transition-all hover:shadow-lg"
             style={{ right: `max(8px, calc(${L.cardL} - ${L.peekFar}px))` }}>
             ›
           </button>

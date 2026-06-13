@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
+import { createCamperFeatureRows, createFeatureIdByKey } from './seed-feature-utils.mjs'
 
 const SUPABASE_URL = 'https://yjelwuevrxfiloodtzlb.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqZWx3dWV2cnhmaWxvb2R0emxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDY0MTQsImV4cCI6MjA5NjA4MjQxNH0.TFzrEfVYVS2xAeDys4xiR243L4RifvIcWZrSsynQjPA'
@@ -17,7 +18,7 @@ const CAMPERS = [
     type_id: 2, // alkóvos
     capacity_id: 2, // 2-4 fő
     description: 'A Capron A68 egy kényelmes alkóvos lakóautó 2019-ből, automata sebességváltóval. 6,6 méteres hosszával bőséges helyet kínál: padlófűtés, napelem, klíma, zuhanyzó és öblítéses WC is a fedélzeten. Ideális párok vagy kis családok számára.',
-    features: [1, 3, 4, 5, 6, 7, 10], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap, Napelemes, Automata
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
   {
     folder: 'Challenger Nordic',
@@ -27,7 +28,7 @@ const CAMPERS = [
     type_id: 2, // alkóvos
     capacity_id: 2, // 2-4 fő
     description: 'A Challenger Nordic 377 egy téli kalandokra felkészített alkóvos lakóautó 2016-ból, spiked téligumikkal és sütővel. Napelem, zuhanyzó, TV és napernyő teszi teljessé a komfortot. Hosszabb utakra ideális választás.',
-    features: [1, 3, 4, 5, 6, 7], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap, Napelemes
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
   {
     folder: 'Eura Mobil Integra line',
@@ -37,7 +38,7 @@ const CAMPERS = [
     type_id: 3, // integrált
     capacity_id: 3, // 4-6 fő
     description: 'Az Eura Mobil Integra Line egy tágas integrált lakóautó 2015-ből, automata váltóval. Padlófűtés, napelem, TV és klíma a lakótérben is. Zuhanyzó, öblítéses WC és napernyő teszi teljessé – ideális nagyobb társaságnak.',
-    features: [1, 3, 4, 5, 6, 7, 10], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap, Napelemes, Automata
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
   {
     folder: 'Hobby T75HF',
@@ -47,7 +48,7 @@ const CAMPERS = [
     type_id: 2, // alkóvos
     capacity_id: 2, // 2-4 fő
     description: 'A Hobby T75HF egy 2018-as, félintegrált lakóautó összkerékhajtással és téli felkészítéssel. Klíma mind a kabinban, mind a lakótérben, padlófűtéssel és zuhanyzóval. Aktív kalandvágyóknak tökéletes választás.',
-    features: [1, 3, 4, 5, 6], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove'],
   },
   {
     folder: 'Hymer Ayers Rock',
@@ -57,7 +58,7 @@ const CAMPERS = [
     type_id: 1, // camper-van
     capacity_id: 1, // 2-3 fő
     description: 'A Hymer Ayers Rock egy kompakt és manőverezhető camper van 2018-ból, automata váltóval. Téligumikkal és vonóhoroggal felszerelve, kisméretű de teljes komforttal. Városban és vidéken egyaránt otthonos.',
-    features: [1, 4, 5, 6, 10], // Légkondi, WC, Hűtő, Főzőlap, Automata
+    featureKeys: ['cab_ac', 'cassette_wc', 'refrigerator', 'gas_stove'],
   },
   {
     folder: 'Karmann Mobil',
@@ -67,7 +68,7 @@ const CAMPERS = [
     type_id: 1, // camper-van
     capacity_id: 1, // 2-3 fő
     description: 'A Karmann Mobil Dexter egy megbízható camper van 2012-ből, automata váltóval. Napelempanel, zuhanyzó, öblítéses WC és klíma a fedélzeten. Bluetooth és CD-lejátszó is tartozik hozzá – remek ár-érték arány.',
-    features: [1, 3, 4, 5, 6, 7, 10], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap, Napelemes, Automata
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
   {
     folder: 'Rapido 8096DF',
@@ -77,7 +78,7 @@ const CAMPERS = [
     type_id: 3, // integrált
     capacity_id: 3, // 4-6 fő
     description: 'A Rapido 8096DF a flotta legújabb és legtávolabb vitele darabja: 2023-as integrált lakóautó, klímával mindkét zónában és padlófűtéssel. Napelem, zuhanyzó és automata váltó – tökéletes hosszabb utakhoz és nagyobb társasághoz.',
-    features: [1, 3, 4, 5, 6, 7, 10], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap, Napelemes, Automata
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
   {
     folder: 'Sprinter',
@@ -87,7 +88,7 @@ const CAMPERS = [
     type_id: 1, // camper-van
     capacity_id: 1, // 2-3 fő
     description: 'A Hymer Grand Canyon S egy prémium Mercedes Sprinter alapú camper van 2021-ből. Automata váltóval, padlófűtéssel, napelemmel, zuhanyzóval és TV-vel felszerelve. Télre adaptált – egész évben bevethető.',
-    features: [1, 3, 4, 5, 6, 7, 10], // Légkondi, Zuhanyzó, WC, Hűtő, Főzőlap, Napelemes, Automata
+    featureKeys: ['cab_ac', 'shower', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
   {
     folder: 'Vw Crafter',
@@ -97,7 +98,7 @@ const CAMPERS = [
     type_id: 1, // camper-van
     capacity_id: 1, // 2-3 fő
     description: 'A VW Crafter Offgrid Overlander egy 2020-as, off-road kialakítású camper van napelempanellel és automata váltóval. Téligumikkal felszerelve, aszfalton és úttalan terepen egyaránt otthon érzi magát. Igazi felfedezők választása.',
-    features: [1, 4, 5, 6, 7, 10], // Légkondi, WC, Hűtő, Főzőlap, Napelemes, Automata
+    featureKeys: ['cab_ac', 'cassette_wc', 'refrigerator', 'gas_stove', 'solar_panel'],
   },
 ]
 
@@ -121,6 +122,14 @@ async function main() {
   await supabase.from('camper_features').delete().neq('camper_id', '00000000-0000-0000-0000-000000000000')
   await supabase.from('campers').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   console.log('Törölve.')
+
+  const { data: featureRows, error: featureLoadError } = await supabase
+    .from('features')
+    .select('id, key')
+
+  if (featureLoadError) throw new Error(`Feature lista betöltési hiba: ${featureLoadError.message}`)
+
+  const featureIdByKey = createFeatureIdByKey(featureRows)
 
   for (const camper of CAMPERS) {
     const folderPath = path.join(CAMPERS_DIR, camper.folder)
@@ -174,10 +183,18 @@ async function main() {
     console.log(`  ✓ Beillesztve (id: ${inserted.id})`)
 
     // Insert features
-    const featureRows = camper.features.map(fid => ({ camper_id: inserted.id, feature_id: fid }))
-    const { error: featErr } = await supabase.from('camper_features').insert(featureRows)
+    const { rows: camperFeatureRows, missingFeatureKeys } = createCamperFeatureRows(
+      inserted.id,
+      camper.featureKeys,
+      featureIdByKey,
+    )
+    if (missingFeatureKeys.length > 0) {
+      console.warn(`  ⚠ Hiányzó feature key: ${missingFeatureKeys.join(', ')}`)
+    }
+
+    const { error: featErr } = await supabase.from('camper_features').insert(camperFeatureRows)
     if (featErr) console.warn(`  ⚠ Feature hiba: ${featErr.message}`)
-    else console.log(`  ✓ ${featureRows.length} feature hozzárendelve`)
+    else console.log(`  ✓ ${camperFeatureRows.length} feature hozzárendelve`)
   }
 
   console.log('\n✅ Kész!')

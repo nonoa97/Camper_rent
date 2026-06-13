@@ -1,34 +1,94 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationState } from './state'
+import { positivePriceOrNull } from './priceUtils'
 
 export interface CamperResult {
   slug: string
   name: string
   image_url: string
-  price_per_day: number
+  price_per_day: number | null
   type: string | null
   beds: number | null
-  wildCampingSuitable: boolean | null
   availableSlots: { from: string; to: string; days: number }[]
 }
 
 const MIN_RENTAL_DAYS = 3
 
-async function loadPeakPrices(): Promise<Record<string, number>> {
-  const { data } = await supabase.from('camper_prices').select('camper_id, price').eq('season_id', 'peak')
+type AvailabilitySeason = {
+  id: string
+  fromMd: string
+  toMd: string
+  sortOrder: number
+}
+
+async function loadPricesForSeason(seasonId: string): Promise<Record<string, number>> {
+  const { data } = await supabase.from('camper_prices').select('camper_id, price').eq('season_id', seasonId)
   const map: Record<string, number> = {}
   for (const row of (data ?? []) as any[]) map[row.camper_id] = row.price
   return map
 }
+
+function mdFromDate(date: string): string {
+  return date.slice(5, 10)
+}
+
+function seasonContains(season: AvailabilitySeason, md: string): boolean {
+  if (season.fromMd <= season.toMd) return md >= season.fromMd && md <= season.toMd
+  return md >= season.fromMd || md <= season.toMd
+}
+
+function getPricingDateForAvailability(state: ConversationState): string {
+  if (state.startDate) return state.startDate
+  const preferredStartWindow = state.flexibleCriteria?.preferredStartWindows
+    ?.filter(window => window.startDate <= window.endDate)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0]
+  if (preferredStartWindow) return preferredStartWindow.startDate
+  if (state.month) return `${state.month}-01`
+  return new Date().toISOString().split('T')[0]
+}
+
+async function resolveAvailabilitySeasonId(state: ConversationState): Promise<string | undefined> {
+  const { data } = await supabase
+    .from('seasons')
+    .select('id, from_md, to_md, sort_order')
+    .order('sort_order')
+
+  const seasons: AvailabilitySeason[] = ((data ?? []) as any[]).map(row => ({
+    id: row.id,
+    fromMd: row.from_md,
+    toMd: row.to_md,
+    sortOrder: row.sort_order ?? 0,
+  }))
+  const md = mdFromDate(getPricingDateForAvailability(state))
+  return seasons
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .find(season => seasonContains(season, md))
+    ?.id
+}
+
+async function loadAvailabilityPrices(state: ConversationState): Promise<Record<string, number>> {
+  const seasonId = await resolveAvailabilitySeasonId(state)
+  if (!seasonId) return {}
+  return loadPricesForSeason(seasonId)
+}
 type BookingRow = { start_date: string; end_date: string; status?: string | null }
 
-function addDays(dateStr: string, n: number): string {
+function getPrimaryImage(row: any): string {
+  const images = Array.isArray(row.camper_images)
+    ? [...row.camper_images].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    : []
+  return images.find((image: any) => typeof image.url === 'string' && image.url.length > 0)?.url
+    ?? row.image_url
+    ?? ''
+}
+
+export function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr)
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().split('T')[0]
 }
 
-function daysBetween(from: string, to: string): number {
+export function daysBetween(from: string, to: string): number {
   return Math.floor((new Date(to).getTime() - new Date(from).getTime()) / 86400000)
 }
 
@@ -87,6 +147,58 @@ export function pickSlots(
   return picked
 }
 
+function getPreferredStartWindows(
+  state: ConversationState,
+): NonNullable<NonNullable<ConversationState['flexibleCriteria']>['preferredStartWindows']> {
+  return state.flexibleCriteria?.preferredStartWindows?.filter(window => window.startDate <= window.endDate) ?? []
+}
+
+export function getPreferredStartSearchWindow(
+  state: ConversationState,
+  minDays = state.durationDays ?? MIN_RENTAL_DAYS,
+): { from?: string; to?: string } {
+  const windows = getPreferredStartWindows(state)
+  if (!windows.length) return {}
+  const from = windows.map(window => window.startDate).sort()[0]
+  const latestStart = windows.map(window => window.endDate).sort().at(-1)!
+  return {
+    from,
+    to: addDays(latestStart, Math.max(minDays, MIN_RENTAL_DAYS) - 1),
+  }
+}
+
+export function pickSlotsForPreferredStartWindows(
+  freeSlots: { from: string; to: string; days: number }[],
+  windows: NonNullable<ConversationState['flexibleCriteria']>['preferredStartWindows'],
+  durationDays?: number,
+): { from: string; to: string; days: number }[] {
+  const validWindows = (windows ?? []).filter(window => window.startDate <= window.endDate)
+  if (!validWindows.length) return pickSlots(freeSlots, durationDays)
+
+  const picked: { from: string; to: string; days: number }[] = []
+  for (const slot of freeSlots) {
+    if (picked.length >= 2) break
+    for (const window of validWindows) {
+      const start = slot.from > window.startDate ? slot.from : window.startDate
+      if (start > window.endDate) continue
+      if (durationDays) {
+        const to = addDays(start, durationDays - 1)
+        if (to <= slot.to) {
+          picked.push({ from: start, to, days: durationDays })
+          break
+        }
+      } else {
+        const days = daysBetween(start, addDays(slot.to, 1))
+        if (days >= MIN_RENTAL_DAYS) {
+          picked.push({ from: start, to: slot.to, days })
+          break
+        }
+      }
+    }
+  }
+  return picked
+}
+
 function traceAvailability(
   label: string,
   payload: {
@@ -113,6 +225,10 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
   if (exactRange) {
     windowFrom = state.startDate!
     windowTo = state.endDate!
+  } else if (getPreferredStartSearchWindow(state).from && getPreferredStartSearchWindow(state).to) {
+    const preferredWindow = getPreferredStartSearchWindow(state)
+    windowFrom = preferredWindow.from!
+    windowTo = preferredWindow.to!
   } else if (state.month) {
     const [y, m] = state.month.split('-').map(Number)
     windowFrom = `${state.month}-01`
@@ -124,17 +240,17 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
   }
 
   // Fetch campers
-  const [{ data: rows, error }, peakPrices] = await Promise.all([
+  const [{ data: rows, error }, seasonPrices] = await Promise.all([
     supabase
       .from('campers')
       .select(`
         id, slug, name, image_url,
         type, beds,
-        wild_camping_suitable
+        camper_images(url, sort_order)
       `)
       .eq('available', true)
       .order('name'),
-    loadPeakPrices(),
+    loadAvailabilityPrices(state),
   ])
 
   if (error || !rows) return []
@@ -143,19 +259,15 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
     .map(r => ({
       slug: r.slug,
       name: r.name,
-      image_url: r.image_url,
-      price_per_day: peakPrices[r.id] ?? 0,
+      image_url: getPrimaryImage(r),
+      price_per_day: positivePriceOrNull(seasonPrices[r.id]),
       type: r.type ?? null,
       beds: (r.beds ?? null) as number | null,
-      wildCampingSuitable: r.wild_camping_suitable ?? null,
     }))
-    .sort((a, b) => a.price_per_day - b.price_per_day)
 
   // Filter by passengers
   const filtered = campers.filter(c => {
     if (state.passengers && (c.beds ?? 0) > 0 && (c.beds ?? 0) < state.passengers) return false
-    // Only filter by wild camping if field is explicitly set on the camper
-    if (state.campingType === 'wild' && c.wildCampingSuitable === false) return false
     return true
   })
 
@@ -202,7 +314,6 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
           price_per_day: c.price_per_day,
           type: c.type,
           beds: c.beds,
-          wildCampingSuitable: c.wildCampingSuitable,
           availableSlots: [{
             from: state.startDate!,
             to: state.endDate!,
@@ -212,7 +323,11 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
       }
     } else {
       const freeSlots = computeFreeSlots(camperBookings, windowFrom, windowTo, minDays)
-      const picked = pickSlots(freeSlots, state.durationDays)
+      const picked = pickSlotsForPreferredStartWindows(
+        freeSlots,
+        state.flexibleCriteria?.preferredStartWindows,
+        state.durationDays,
+      )
       traceAvailability('camper-slots', {
         searchStart: windowFrom,
         searchEnd: searchEndExclusive,
@@ -229,25 +344,13 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
           price_per_day: c.price_per_day,
           type: c.type,
           beds: c.beds,
-          wildCampingSuitable: c.wildCampingSuitable,
           availableSlots: picked,
         })
       }
     }
   }
 
-  // Prefer wild camping suitable cars if that's what they want
-  if (state.campingType === 'wild') {
-    results.sort((a, b) => {
-      const aWild = a.wildCampingSuitable === true ? 1 : 0
-      const bWild = b.wildCampingSuitable === true ? 1 : 0
-      return bWild - aWild
-    })
-  }
-
-  // Exclude already recommended
-  const excluded = new Set(state.alreadyRecommendedSlugs ?? [])
-  return results.filter(c => !excluded.has(c.slug))
+  return results
 }
 
 /**
@@ -278,18 +381,18 @@ export async function getSpecificCamperAvailability(
     windowTo = lastDayOfMonth(today.getUTCFullYear(), today.getUTCMonth() + monthsAhead)
   }
 
-  const [{ data: row, error }, peakPrices] = await Promise.all([
+  const [{ data: row, error }, seasonPrices] = await Promise.all([
     supabase
       .from('campers')
       .select(`
         id, slug, name, image_url,
         type, beds,
-        wild_camping_suitable
+        camper_images(url, sort_order)
       `)
       .eq('slug', slug)
       .eq('available', true)
       .single(),
-    loadPeakPrices(),
+    loadAvailabilityPrices(state),
   ])
 
   if (error || !row) return []
@@ -298,11 +401,10 @@ export async function getSpecificCamperAvailability(
   const camper = {
     slug: r.slug as string,
     name: r.name as string,
-    image_url: r.image_url as string,
-    price_per_day: (peakPrices[r.id] ?? 0) as number,
+    image_url: getPrimaryImage(r),
+    price_per_day: positivePriceOrNull(seasonPrices[r.id]),
     type: (r.type ?? null) as string | null,
     beds: (r.beds ?? null) as number | null,
-    wildCampingSuitable: (r.wild_camping_suitable ?? null) as boolean | null,
   }
 
   const searchEndExclusive = addDays(windowTo, 1)
@@ -356,7 +458,6 @@ export async function getSpecificCamperAvailability(
     price_per_day: camper.price_per_day,
     type: camper.type,
     beds: camper.beds,
-    wildCampingSuitable: camper.wildCampingSuitable,
     availableSlots: slots,
   }]
 }
@@ -373,17 +474,17 @@ export async function findEarliestAvailableCamper(
   const windowFrom = today.toISOString().split('T')[0]
   const windowTo = lastDayOfMonth(today.getUTCFullYear(), today.getUTCMonth() + monthsAhead)
 
-  const [{ data: rows, error }, peakPrices] = await Promise.all([
+  const [{ data: rows, error }, seasonPrices] = await Promise.all([
     supabase
       .from('campers')
       .select(`
         id, slug, name, image_url,
         type, beds,
-        wild_camping_suitable
+        camper_images(url, sort_order)
       `)
       .eq('available', true)
       .order('name'),
-    loadPeakPrices(),
+    loadAvailabilityPrices(state),
   ])
 
   if (error || !rows) return []
@@ -392,17 +493,14 @@ export async function findEarliestAvailableCamper(
     .map(r => ({
       slug: r.slug as string,
       name: r.name as string,
-      image_url: r.image_url as string,
-      price_per_day: (peakPrices[r.id] ?? 0) as number,
+      image_url: getPrimaryImage(r),
+      price_per_day: positivePriceOrNull(seasonPrices[r.id]),
       type: (r.type ?? null) as string | null,
       beds: (r.beds ?? null) as number | null,
-      wildCampingSuitable: (r.wild_camping_suitable ?? null) as boolean | null,
     }))
-    .sort((a, b) => a.price_per_day - b.price_per_day)
 
   const filtered = campers.filter(c => {
     if (state.passengers && (c.beds ?? 0) > 0 && (c.beds ?? 0) < state.passengers) return false
-    if (state.campingType === 'wild' && c.wildCampingSuitable === false) return false
     return true
   })
 
@@ -456,7 +554,6 @@ export async function findEarliestAvailableCamper(
       price_per_day: c.price_per_day,
       type: c.type,
       beds: c.beds,
-      wildCampingSuitable: c.wildCampingSuitable,
       availableSlots: [slot],
     })
   }
@@ -464,10 +561,5 @@ export async function findEarliestAvailableCamper(
   // Sort by earliest slot date
   results.sort((a, b) => a.availableSlots[0].from.localeCompare(b.availableSlots[0].from))
 
-  if (state.campingType === 'wild') {
-    results.sort((a, b) => (b.wildCampingSuitable ? 1 : 0) - (a.wildCampingSuitable ? 1 : 0))
-  }
-
-  const excluded = new Set(state.alreadyRecommendedSlugs ?? [])
-  return results.filter(c => !excluded.has(c.slug))
+  return results
 }
