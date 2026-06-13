@@ -26,6 +26,7 @@ export default function CtaBanner({
         src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80"
         alt="Lakóautó naplementében"
         fill
+        sizes="100vw"
         className="object-cover"
       />
       <div className="absolute inset-0 bg-black/45" />

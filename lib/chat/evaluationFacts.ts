@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { ConversationState } from './state'
 import type { FeatureDisplayNameMap } from './featureExplainability'
-import { getPreferredStartSearchWindow } from './availability'
+import { getMonthSearchWindow, getPreferredStartSearchWindow } from './availability'
 
 export interface CamperFact {
   id: string
@@ -75,8 +75,8 @@ export function getSearchWindow(state: ConversationState): { from?: string; to?:
     return { from: preferredStartWindow.from, to: preferredStartWindow.to, hasAvailabilityConstraint: true }
   }
   if (state.month) {
-    const [year, month] = state.month.split('-').map(Number)
-    return { from: `${state.month}-01`, to: lastDayOfMonth(year, month), hasAvailabilityConstraint: true }
+    const monthWindow = getMonthSearchWindow(state.month)
+    return { from: monthWindow.from, to: monthWindow.to, hasAvailabilityConstraint: true }
   }
   return { hasAvailabilityConstraint: false }
 }

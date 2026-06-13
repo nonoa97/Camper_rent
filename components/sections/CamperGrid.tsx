@@ -28,7 +28,7 @@ export default function CamperGrid({ campers }: { campers: Camper[] }) {
           <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
             {camper.image_url && (
               <div className="relative h-[200px] w-full">
-                <Image src={camper.image_url} alt={camper.name} fill className="object-cover" />
+                <Image src={camper.image_url} alt={camper.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
               </div>
             )}
             <div className="p-6">

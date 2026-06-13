@@ -10,6 +10,7 @@ export default function Hero() {
         alt="Camper van a hegyekben"
         fill
         priority
+        sizes="100vw"
         className="object-cover object-center"
       />
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.32) 45%, rgba(0,0,0,0.0) 100%)' }} />

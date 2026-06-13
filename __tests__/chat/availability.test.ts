@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const supabaseCalls: Array<{ table: string; method: string; args: unknown[] }> = []
 const defaultBookingRows = [{
@@ -85,6 +85,7 @@ vi.mock('@/lib/supabase', () => ({
 
 import {
   computeFreeSlots,
+  getMonthSearchWindow,
   getPreferredStartSearchWindow,
   pickSlots,
   pickSlotsForPreferredStartWindows,
@@ -95,6 +96,10 @@ import { buildContextBlock } from '@/lib/chat/prompts'
 beforeEach(() => {
   supabaseCalls.length = 0
   bookingRows = [...defaultBookingRows]
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('Availability - booking overlap and slot computation', () => {
@@ -176,6 +181,48 @@ describe('Availability - booking overlap and slot computation', () => {
       method: 'lt',
       args: ['start_date', '2026-08-01'],
     })
+    expect(supabaseCalls).toContainEqual({
+      table: 'bookings',
+      method: 'gt',
+      args: ['end_date', '2026-07-01'],
+    })
+  })
+
+  it('current month availability search starts from today, not the first day of the month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-14T10:00:00.000Z'))
+    bookingRows = []
+
+    await searchAvailableCampers({
+      intent: 'availability',
+      month: '2026-06',
+      durationDays: 3,
+      passengers: 2,
+    })
+
+    expect(supabaseCalls).toContainEqual({
+      table: 'bookings',
+      method: 'gt',
+      args: ['end_date', '2026-06-14'],
+    })
+    expect(getMonthSearchWindow('2026-06')).toEqual({
+      from: '2026-06-14',
+      to: '2026-06-30',
+    })
+  })
+
+  it('future month availability search starts from the first day of that month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-14T10:00:00.000Z'))
+    bookingRows = []
+
+    await searchAvailableCampers({
+      intent: 'availability',
+      month: '2026-07',
+      durationDays: 3,
+      passengers: 2,
+    })
+
     expect(supabaseCalls).toContainEqual({
       table: 'bookings',
       method: 'gt',

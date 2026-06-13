@@ -46,6 +46,8 @@ export default function TripCarousel() {
                     src={trip.image}
                     alt={trip.name}
                     fill
+                    sizes="(max-width: 768px) 90vw, (max-width: 1200px) 33vw, 380px"
+                    priority={i === 0}
                     className="object-cover transition-transform duration-500 group-hover:scale-108"
                   />
                 </div>

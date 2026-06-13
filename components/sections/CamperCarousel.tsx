@@ -78,7 +78,7 @@ export default function CamperCarousel() {
               <Link key={camper.id} href={`/katalogus/${camper.slug}`} className={`group cursor-pointer block ${i > 0 ? 'hidden md:block' : ''}`}>
                 <div className="relative h-[200px] rounded-2xl overflow-hidden mb-2.5 shadow-sm group-hover:shadow-md transition-shadow duration-300">
                   {camper.image_url ? (
-                    <Image src={camper.image_url} alt={camper.name} fill className="object-cover transition-transform duration-400 group-hover:scale-105" />
+                    <Image src={camper.image_url} alt={camper.name} fill sizes="(max-width: 768px) 90vw, (max-width: 1200px) 33vw, 380px" priority={i === 0} className="object-cover transition-transform duration-400 group-hover:scale-105" />
                   ) : (
                     <div className="w-full h-full bg-[#eee]" />
                   )}

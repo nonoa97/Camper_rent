@@ -39,7 +39,7 @@ export default async function TervPage({ params }: { params: Promise<{ slug: str
 
       {/* Hero */}
       <section className="relative h-[300px] md:h-[400px] overflow-hidden">
-        <Image src={trip.heroImage} alt={trip.title} fill className="object-cover" priority />
+        <Image src={trip.heroImage} alt={trip.title} fill sizes="100vw" className="object-cover" priority />
         <div className="absolute inset-0 bg-black/55" />
         <div className="absolute inset-0 flex flex-col justify-end px-4 md:px-10 pb-10">
           <div className="max-w-[960px] mx-auto w-full">

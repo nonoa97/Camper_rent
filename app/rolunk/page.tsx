@@ -48,6 +48,7 @@ export default function RolunkPage() {
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80"
             alt="Lakóautó horvát tengerparton"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover"
           />
         </div>
@@ -82,6 +83,7 @@ export default function RolunkPage() {
             src="https://images.unsplash.com/photo-1527786356703-4b100091cd2c?w=800&q=80"
             alt="Lakóautó flotta"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover"
           />
         </div>
@@ -96,6 +98,7 @@ export default function RolunkPage() {
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80"
             alt="Csapatunk"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover object-top"
           />
         </div>
@@ -124,7 +127,7 @@ export default function RolunkPage() {
             {VALUES.map(v => (
               <div key={v.title} className="bg-white border border-[#e6e4df] rounded-2xl p-6 shadow-sm">
                 <div className="relative w-11 h-11 rounded-xl overflow-hidden mb-4">
-                  <Image src={v.image} alt={v.title} fill className="object-cover" />
+                  <Image src={v.image} alt={v.title} fill sizes="44px" className="object-cover" />
                 </div>
                 <h3 className="font-bold text-[#111] text-base mb-2">{v.title}</h3>
                 <p className="text-[#666] text-sm leading-relaxed">{v.desc}</p>

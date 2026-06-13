@@ -13,6 +13,7 @@ export interface CamperResult {
 }
 
 const MIN_RENTAL_DAYS = 3
+const BUSINESS_TIME_ZONE = 'Europe/Budapest'
 
 type AvailabilitySeason = {
   id: string
@@ -43,8 +44,8 @@ function getPricingDateForAvailability(state: ConversationState): string {
     ?.filter(window => window.startDate <= window.endDate)
     .sort((a, b) => a.startDate.localeCompare(b.startDate))[0]
   if (preferredStartWindow) return preferredStartWindow.startDate
-  if (state.month) return `${state.month}-01`
-  return new Date().toISOString().split('T')[0]
+  if (state.month) return getMonthSearchWindow(state.month).from
+  return getTodayDateString()
 }
 
 async function resolveAvailabilitySeasonId(state: ConversationState): Promise<string | undefined> {
@@ -80,6 +81,27 @@ function getPrimaryImage(row: any): string {
   return images.find((image: any) => typeof image.url === 'string' && image.url.length > 0)?.url
     ?? row.image_url
     ?? ''
+}
+
+export function getTodayDateString(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+export function getMonthSearchWindow(month: string, today = getTodayDateString()): { from: string; to: string } {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const monthStart = `${month}-01`
+  const monthEnd = lastDayOfMonth(year, monthNumber)
+  return {
+    from: today.startsWith(`${month}-`) && today > monthStart ? today : monthStart,
+    to: monthEnd,
+  }
 }
 
 export function addDays(dateStr: string, n: number): string {
@@ -215,7 +237,7 @@ function traceAvailability(
 }
 
 export async function searchAvailableCampers(state: ConversationState): Promise<CamperResult[]> {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayDateString()
 
   // Determine search window
   let windowFrom: string
@@ -230,12 +252,12 @@ export async function searchAvailableCampers(state: ConversationState): Promise<
     windowFrom = preferredWindow.from!
     windowTo = preferredWindow.to!
   } else if (state.month) {
-    const [y, m] = state.month.split('-').map(Number)
-    windowFrom = `${state.month}-01`
-    windowTo = lastDayOfMonth(y, m)
+    const monthWindow = getMonthSearchWindow(state.month, today)
+    windowFrom = monthWindow.from
+    windowTo = monthWindow.to
   } else {
     windowFrom = today
-    const now = new Date()
+    const now = new Date(`${today}T00:00:00Z`)
     windowTo = lastDayOfMonth(now.getUTCFullYear(), now.getUTCMonth() + 3)
   }
 
@@ -363,8 +385,7 @@ export async function getSpecificCamperAvailability(
   state: ConversationState,
   monthsAhead = 6,
 ): Promise<CamperResult[]> {
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = getTodayDateString()
 
   let windowFrom: string
   let windowTo: string
@@ -373,11 +394,12 @@ export async function getSpecificCamperAvailability(
     windowFrom = state.startDate
     windowTo = state.endDate
   } else if (state.month) {
-    const [y, m] = state.month.split('-').map(Number)
-    windowFrom = `${state.month}-01`
-    windowTo = lastDayOfMonth(y, m)
+    const monthWindow = getMonthSearchWindow(state.month, todayStr)
+    windowFrom = monthWindow.from
+    windowTo = monthWindow.to
   } else {
     windowFrom = todayStr
+    const today = new Date(`${todayStr}T00:00:00Z`)
     windowTo = lastDayOfMonth(today.getUTCFullYear(), today.getUTCMonth() + monthsAhead)
   }
 
@@ -470,8 +492,9 @@ export async function findEarliestAvailableCamper(
   state: ConversationState,
   monthsAhead = 6,
 ): Promise<CamperResult[]> {
-  const today = new Date()
-  const windowFrom = today.toISOString().split('T')[0]
+  const todayStr = getTodayDateString()
+  const today = new Date(`${todayStr}T00:00:00Z`)
+  const windowFrom = todayStr
   const windowTo = lastDayOfMonth(today.getUTCFullYear(), today.getUTCMonth() + monthsAhead)
 
   const [{ data: rows, error }, seasonPrices] = await Promise.all([
